@@ -66,6 +66,7 @@ if __name__ == '__main__':
         logging.error("Error while finding layers " + str(e))
         sys.exit()
 
+    # сохранение данных
     try:
         write(output_path, lost_layers)
     except BaseException as e:

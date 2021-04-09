@@ -3,6 +3,7 @@ import pandas as pd
 from tqdm import tqdm
 
 
+# проверка пласта на перфорированность
 def is_perf(top, bot, ints):
     if ints is None:
         return False
