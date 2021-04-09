@@ -12,4 +12,4 @@
 
 
 ## Запуск предметного модуля:
-'''python3 find_layers.py'''
+python3 find_layers.py
