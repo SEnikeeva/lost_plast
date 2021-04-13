@@ -8,9 +8,7 @@ def is_perf(top, bot, ints):
     if ints is None:
         return False
     for int_perf in ints:
-        if (top <= int_perf['top'] <= bot) or (top <= int_perf['bot'] <= bot):
-            return True
-        elif (top >= int_perf['top']) and (int_perf['bot'] >= bot):
+        if (top < int_perf['bot']) and (int_perf['top'] < bot):
             return True
     return False
 
