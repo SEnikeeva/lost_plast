@@ -71,7 +71,7 @@ if __name__ == '__main__':
         sys.exit()
 
     try:
-        act_perf = get_actual_perf(perf_df)
+        act_perf = get_actual_perf(perf_df, STEP)
     except BaseException as e:
         logging.error("Error while getting the actual perforation " + str(e))
         sys.exit()
