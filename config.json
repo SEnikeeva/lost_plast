@@ -1,3 +1,6 @@
 {
-    "SOIL_CUT" : 60
+    "SOIL_CUT": 60,
+    "step": 0.1,
+    "perf_path": "Перфорация.xlsx",
+    "fes_path": "ФЕС.xlsx"
 }

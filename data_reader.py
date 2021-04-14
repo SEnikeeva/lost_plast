@@ -2,7 +2,8 @@ import pandas as pd
 
 
 def rename_columns(df):
-    col_names = {'well': '', 'top': '', 'bot': '', 'soil': ''}
+    col_names = {'well': '', 'top': '', 'bot': '',
+                 'soil': '', 'date': '', 'type': ''}
     for column in df.columns.values:
         if 'кваж' in column:
             col_names['well'] = column
@@ -12,19 +13,25 @@ def rename_columns(df):
             col_names['bot'] = column
         elif 'нефтенас' in column:
             col_names['soil'] = column
+        elif 'дата' in column:
+            col_names['date'] = column
+        elif 'открыт' in column:
+            col_names['type'] = column
     df.rename(columns={col_names['bot']: 'bot', col_names['top']: 'top',
-                       col_names['well']: 'well', col_names['soil']: 'soil'}, inplace=True)
+                       col_names['well']: 'well', col_names['soil']: 'soil',
+                       col_names['date']: 'date', col_names['type']: 'type'}, inplace=True)
 
 
 def perf_reader(perf_path):
     perf_df = pd.read_excel(perf_path, engine='openpyxl')
     perf_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
     rename_columns(perf_df)
+    perf_df.sort_values(by=['well', 'date'], inplace=True)
     perf_ints = {}
     for well in perf_df['well'].unique():
-        well_df = perf_df[perf_df['well'] == well][['top', 'bot']]
+        well_df = perf_df[perf_df['well'] == well][['top', 'bot', 'type', 'date']]
         perf_ints[well] = well_df.to_dict(orient='records')
-    return perf_ints
+    return perf_ints, perf_df
 
 
 def fes_reader(fes_path):

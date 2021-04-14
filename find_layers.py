@@ -5,7 +5,8 @@ import os
 import sys
 from data_reader import fes_reader, perf_reader
 from finder import find_layers
-from writexl import write
+from actual_perf import get_actual_perf
+from writexl import write_layers
 
 
 # конвертация путей файлов в зависимости от системы
@@ -44,13 +45,16 @@ if __name__ == '__main__':
         try:
             conf = json.load(f)
             SOIL_CUT = float(conf["SOIL_CUT"])
+            STEP = float(conf["step"])
+            perf_path = conf["perf_path"]
+            fes_path = conf["fes_path"]
         except BaseException as e:
             logging.error("Error loading config file. " + str(e))
             sys.exit()
-    perf_path = replace_slash(input_folder + '\\Перфорация.xlsx')
-    fes_path = replace_slash(input_folder + '\\ФЕС.xlsx')
+    perf_path = replace_slash(input_folder + '\\' + perf_path)
+    fes_path = replace_slash(input_folder + '\\' + fes_path)
     try:
-        perf_ints = perf_reader(perf_path)
+        perf_ints, perf_df = perf_reader(perf_path)
     except BaseException as e:
         logging.error("Error loading perf file. " + str(e))
         sys.exit()
@@ -66,9 +70,15 @@ if __name__ == '__main__':
         logging.error("Error while finding layers " + str(e))
         sys.exit()
 
+    try:
+        act_perf = get_actual_perf(perf_df)
+    except BaseException as e:
+        logging.error("Error while getting the actual perforation " + str(e))
+        sys.exit()
+
     # сохранение данных
     try:
-        write(output_path, lost_layers)
+        write_layers(output_path, lost_layers)
     except BaseException as e:
         logging.error("Error while writing results " + str(e))
         sys.exit()
