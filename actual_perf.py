@@ -45,6 +45,7 @@ def get_actual_perf(perf_df, act_perf_year):
                 if idx == len(act_perf_well):
                     act_perf_well.append({'well': well, 'top': top, 'bot': bot, 'perf_type': perf_type})
                 else:
+                    shift = 1
                     if act_perf_well[idx]['top'] > top:
                         if act_perf_well[idx]['perf_type'] == perf_type:
                             act_perf_well[idx]['top'] = top
@@ -53,11 +54,12 @@ def get_actual_perf(perf_df, act_perf_year):
                                                        'bot': bot if act_perf_well[idx]['top'] > bot else
                                                        act_perf_well[idx]['top'],
                                                        'perf_type': perf_type})
+                            shift += 1
                     if act_perf_well[idx]['bot'] < bot:
                         if act_perf_well[idx]['perf_type'] == perf_type:
                             act_perf_well[idx]['bot'] = bot
                         else:
-                            act_perf_well.insert(idx + 1, {'well': well, 'top': act_perf_well[idx]['bot'], 'bot': bot,
+                            act_perf_well.insert(idx + shift, {'well': well, 'top': act_perf_well[idx]['bot'], 'bot': bot,
                                                            'perf_type': perf_type})
 
         act_perf.extend(act_perf_well)

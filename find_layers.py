@@ -14,9 +14,9 @@ from writexl import write_layers, write_act_perf
 def replace_slash(file_path):
     platform = sys.platform
     slash_map = {'win32': '\\',
-                'cygwin': '\\',
-                'darwin': '/',
-                'linux2': '/'}
+                 'cygwin': '\\',
+                 'darwin': '/',
+                 'linux2': '/'}
     if platform not in slash_map.keys(): platform = 'linux2'
     return file_path.replace('\\', slash_map[platform])
 
@@ -36,7 +36,6 @@ def get_year(conf_perf_year):
         return date(year=int(conf_perf_year), month=1, day=1)
     except:
         return None
-
 
 
 if __name__ == '__main__':
@@ -68,7 +67,7 @@ if __name__ == '__main__':
     perf_path = replace_slash(input_folder + '\\' + perf_path)
     fes_path = replace_slash(input_folder + '\\' + fes_path)
     try:
-        perf_ints, perf_df = perf_reader(perf_path)
+        perf_df = perf_reader(perf_path)
     except BaseException as e:
         logging.error("Error loading perf file. " + str(e))
         sys.exit()
@@ -79,7 +78,7 @@ if __name__ == '__main__':
         sys.exit()
 
     try:
-        lost_layers = find_layers(perf_ints, fes_df, SOIL_CUT)
+        lost_layers = find_layers(perf_df, fes_df, SOIL_CUT)
     except BaseException as e:
         logging.error("Error while finding layers " + str(e))
         sys.exit()
@@ -97,4 +96,3 @@ if __name__ == '__main__':
     except BaseException as e:
         logging.error("Error while writing results " + str(e))
         sys.exit()
-

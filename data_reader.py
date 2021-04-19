@@ -32,19 +32,14 @@ def perf_reader(perf_path):
     rename_columns(perf_df)
     perf_df['date'] = perf_df['date'].dt.date
     perf_df.sort_values(by=['well', 'date'], ascending=False, inplace=True)
-    # perf_df = perf_df.round({'top': 1, 'bot': 1})
+    # определение вида перфорации
     perf_df['type'] = perf_df['type'].apply(get_type)
     perf_df.drop(perf_df[perf_df['type'] == -1].index, inplace=True)
+    # переименовка скважин (удаление слэша)
     perf_df['well'] = perf_df['well'].apply(well_renaming)
-    perf_ints = {}
     print('done reading perf xl')
-    print('started transform perf table to dict')
-    for well in perf_df['well'].unique():
-        well_df = perf_df[perf_df['well'] == well][['top', 'bot', 'type', 'date']]
-        perf_ints[well] = well_df.to_dict(orient='records')
-    print('done')
 
-    return perf_ints, perf_df
+    return perf_df
 
 
 def fes_reader(fes_path):
