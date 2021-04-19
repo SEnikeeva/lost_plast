@@ -18,6 +18,8 @@ def find_layers(perf_ints, fes_df, soil_cut):
     for well in tqdm(fes_df['well'].unique()):
         well_df = fes_df[fes_df['well'] == well][['well', 'top', 'bot', 'soil']]
         well_df.dropna(inplace=True)
+        if len(well_df) == 0:
+            continue
         ints = perf_ints.get(well)
         well_df['is_perf'] = well_df\
             .apply(lambda x: is_perf(x['top'], x['bot'], ints), axis=1)

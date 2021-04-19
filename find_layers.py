@@ -6,7 +6,7 @@ import sys
 from data_reader import fes_reader, perf_reader
 from finder import find_layers
 from actual_perf import get_actual_perf
-from writexl import write_layers
+from writexl import write_layers, write_act_perf
 
 
 # конвертация путей файлов в зависимости от системы
@@ -32,7 +32,9 @@ if __name__ == '__main__':
 
     input_folder = "input_data"
     out_folder = "output_data"
-    output_path = replace_slash(out_folder + "\\" + "non_perf_layers.xlsx")
+    output_path_l = replace_slash(out_folder + "\\" + "non_perf_layers.xlsx")
+    output_path_a = replace_slash(out_folder + "\\" + "act_perf.xlsx")
+
     if not os.path.exists(out_folder):
         os.makedirs(out_folder)
     else:
@@ -71,14 +73,15 @@ if __name__ == '__main__':
         sys.exit()
 
     try:
-        act_perf = get_actual_perf(perf_df, STEP)
+        act_perf = get_actual_perf(perf_df)
     except BaseException as e:
         logging.error("Error while getting the actual perforation " + str(e))
         sys.exit()
 
     # сохранение данных
     try:
-        write_layers(output_path, lost_layers)
+        write_layers(output_path_l, lost_layers)
+        write_act_perf(output_path=output_path_a, act_perf=act_perf)
     except BaseException as e:
         logging.error("Error while writing results " + str(e))
         sys.exit()
