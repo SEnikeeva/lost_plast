@@ -1,7 +1,5 @@
 import numpy as np
-import pandas as pd
 from tqdm import tqdm
-import json
 
 import bisect
 
@@ -32,8 +30,11 @@ def collect_ints(act_perf):
         pass
 
 
-def get_actual_perf(perf_df):
+def get_actual_perf(perf_df, act_perf_year):
     act_perf = []
+    if act_perf_year is not None:
+        perf_df.drop(perf_df[perf_df['date'] > act_perf_year].index,
+                     inplace=True)
     for well in tqdm(perf_df['well'].unique()):
         well_df = perf_df[perf_df['well'] == well]
         act_perf_well = []

@@ -30,6 +30,7 @@ def perf_reader(perf_path):
     perf_df = pd.read_excel(perf_path, engine='openpyxl', skiprows=1)
     perf_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
     rename_columns(perf_df)
+    perf_df['date'] = perf_df['date'].dt.date
     perf_df.sort_values(by=['well', 'date'], ascending=False, inplace=True)
     # perf_df = perf_df.round({'top': 1, 'bot': 1})
     perf_df['type'] = perf_df['type'].apply(get_type)

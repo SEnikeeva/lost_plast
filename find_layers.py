@@ -1,8 +1,9 @@
 import json
 import logging
 import os
-
 import sys
+from datetime import date
+
 from data_reader import fes_reader, perf_reader
 from finder import find_layers
 from actual_perf import get_actual_perf
@@ -28,6 +29,16 @@ def clear_out_folder(output_folder):
         os.remove(path_dir)
 
 
+def get_year(conf_perf_year):
+    if conf_perf_year == '':
+        return None
+    try:
+        return date(year=int(conf_perf_year), month=1, day=1)
+    except:
+        return None
+
+
+
 if __name__ == '__main__':
 
     input_folder = "input_data"
@@ -50,6 +61,7 @@ if __name__ == '__main__':
             STEP = float(conf["step"])
             perf_path = conf["perf_path"]
             fes_path = conf["fes_path"]
+            act_perf_year = get_year(conf["act_perf_year"])
         except BaseException as e:
             logging.error("Error loading config file. " + str(e))
             sys.exit()
@@ -73,7 +85,7 @@ if __name__ == '__main__':
         sys.exit()
 
     try:
-        act_perf = get_actual_perf(perf_df)
+        act_perf = get_actual_perf(perf_df, act_perf_year)
     except BaseException as e:
         logging.error("Error while getting the actual perforation " + str(e))
         sys.exit()
