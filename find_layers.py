@@ -67,7 +67,7 @@ if __name__ == '__main__':
     perf_path = replace_slash(input_folder + '\\' + perf_path)
     fes_path = replace_slash(input_folder + '\\' + fes_path)
     try:
-        perf_df = perf_reader(perf_path)
+        perf_ints = perf_reader(perf_path)
     except BaseException as e:
         logging.error("Error loading perf file. " + str(e))
         sys.exit()
@@ -78,13 +78,13 @@ if __name__ == '__main__':
         sys.exit()
 
     try:
-        lost_layers = find_layers(perf_df, fes_df, SOIL_CUT)
+        lost_layers = find_layers(perf_ints, fes_df, SOIL_CUT)
     except BaseException as e:
         logging.error("Error while finding layers " + str(e))
         sys.exit()
 
     try:
-        act_perf = get_actual_perf(perf_df, act_perf_year)
+        act_perf = get_actual_perf(perf_ints, act_perf_year)
     except BaseException as e:
         logging.error("Error while getting the actual perforation " + str(e))
         sys.exit()

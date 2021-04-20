@@ -3,5 +3,5 @@
     "step": 0.1,
     "perf_path": "armitz/miner/ARX_PERF.xlsx",
     "fes_path": "armitz/miner/QINF.xlsx",
-    "act_perf_year": 2010
+    "act_perf_year": ""
 }

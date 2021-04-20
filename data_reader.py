@@ -22,7 +22,8 @@ def rename_columns(df):
                        col_names['date']: 'date', col_names['type']: 'type'},
               inplace=True)
     col_names_set = set(df.columns)
-    df.drop(columns=list(col_names_set.difference(col_names.keys())), inplace=True)
+    df.drop(columns=list(col_names_set.difference(col_names.keys())),
+            inplace=True)
 
 
 def perf_reader(perf_path):
@@ -39,7 +40,16 @@ def perf_reader(perf_path):
     perf_df['well'] = perf_df['well'].apply(well_renaming)
     print('done reading perf xl')
 
-    return perf_df
+    perf_df.set_index('well', inplace=True)
+    perf_ints = perf_df.groupby(level=0, sort=False) \
+        .apply(lambda x: [{'type': e[0],
+                           'date': e[1],
+                           'top': e[2],
+                           'bot': e[3]}
+                          for e in x.values]) \
+        .to_dict()
+
+    return perf_ints
 
 
 def fes_reader(fes_path):
@@ -56,7 +66,8 @@ def get_type(type_str):
     if (type(type_str) is not str) or 'спец' in type_str.lower():
         return -1
     elif ('отключ' in type_str.lower()) \
-            or (('изоляц' in type_str.lower()) and ('раб' in type_str.lower())):
+            or (
+            ('изоляц' in type_str.lower()) and ('раб' in type_str.lower())):
         return 0
     return 1
 
