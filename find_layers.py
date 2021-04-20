@@ -57,7 +57,6 @@ if __name__ == '__main__':
         try:
             conf = json.load(f)
             SOIL_CUT = float(conf["SOIL_CUT"])
-            STEP = float(conf["step"])
             perf_path = conf["perf_path"]
             fes_path = conf["fes_path"]
             act_perf_year = get_year(conf["act_perf_year"])
