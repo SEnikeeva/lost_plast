@@ -29,6 +29,7 @@ def rename_columns(df):
 def perf_reader(perf_path):
     print('started reading perf xl')
     perf_df = pd.read_excel(perf_path, engine='openpyxl', skiprows=1)
+    print('done reading perf xl and started processing perf data')
     perf_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
     rename_columns(perf_df)
     perf_df['date'] = perf_df['date'].dt.date
@@ -38,7 +39,6 @@ def perf_reader(perf_path):
     perf_df.drop(perf_df[perf_df['type'] == -1].index, inplace=True)
     # переименовка скважин (удаление слэша)
     perf_df['well'] = perf_df['well'].apply(well_renaming)
-    print('done reading perf xl')
 
     perf_df.set_index('well', inplace=True)
     perf_ints = perf_df.groupby(level=0, sort=False) \
@@ -55,11 +55,21 @@ def perf_reader(perf_path):
 def fes_reader(fes_path):
     print('started reading fes xl')
     fes_df = pd.read_excel(fes_path, engine='openpyxl', skiprows=1)
+    print('done reading fes xl')
     fes_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
     rename_columns(fes_df)
     fes_df['well'] = fes_df['well'].apply(well_renaming)
-    print('done reading fes xl')
-    return fes_df
+    fes_df.dropna(inplace=True)
+    fes_df.set_index('well', inplace=True)
+
+    fes_dict = fes_df.groupby(level=0, sort=False) \
+        .apply(lambda x: [{'top': e[0],
+                           'bot': e[1],
+                           'soil': e[2]}
+                          for e in x.values]) \
+        .to_dict()
+    print('done processing data')
+    return fes_dict
 
 
 def get_type(type_str):

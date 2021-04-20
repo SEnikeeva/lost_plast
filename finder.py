@@ -1,5 +1,3 @@
-import pandas as pd
-
 from tqdm import tqdm
 
 
@@ -13,18 +11,18 @@ def is_perf(top, bot, ints):
     return False
 
 
-def find_layers(perf_ints, fes_df, soil_cut):
-    lost_layers = pd.DataFrame(columns=['well', 'top', 'bot', 'soil', 'is_perf'])
-    for well in tqdm(fes_df['well'].unique()):
-        well_df = fes_df[fes_df['well'] == well][['well', 'top', 'bot', 'soil']]
-        well_df.dropna(inplace=True)
-        if len(well_df) == 0:
-            continue
+def find_layers(perf_ints, fes_dict, soil_cut):
+    lost_layers = []
+    for well in tqdm(fes_dict.keys()):
         ints = perf_ints.get(well)
-        well_df['is_perf'] = well_df\
-            .apply(lambda x: is_perf(x['top'], x['bot'], ints), axis=1)
-        non_perf = well_df[(~well_df['is_perf']) &
-                           (well_df['soil'] > soil_cut)]
-        lost_layers = lost_layers.append(non_perf, ignore_index=True)
+        for row in fes_dict[well]:
+            top = row['top']
+            bot = row['bot']
+            soil = row['soil']
+            if soil < soil_cut:
+                continue
+            if not is_perf(top, bot, ints):
+                lost_layers.append({'well': well, 'top': top,
+                                    'bot': bot, 'soil': soil})
     return lost_layers
 

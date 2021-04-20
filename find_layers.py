@@ -72,13 +72,13 @@ if __name__ == '__main__':
         logging.error("Error loading perf file. " + str(e))
         sys.exit()
     try:
-        fes_df = fes_reader(fes_path)
+        fes_dict = fes_reader(fes_path)
     except BaseException as e:
         logging.error("Error loading fes file. " + str(e))
         sys.exit()
 
     try:
-        lost_layers = find_layers(perf_ints, fes_df, SOIL_CUT)
+        lost_layers = find_layers(perf_ints, fes_dict, SOIL_CUT)
     except BaseException as e:
         logging.error("Error while finding layers " + str(e))
         sys.exit()
