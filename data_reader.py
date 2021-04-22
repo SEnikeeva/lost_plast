@@ -41,6 +41,9 @@ def perf_reader(perf_path):
     perf_df['well'] = perf_df['well'].apply(well_renaming)
 
     perf_df.set_index('well', inplace=True)
+    # перестановка столбцов для сохранения установленного порядка
+    perf_df = perf_df.reindex(['type', 'date', 'top', 'bot'], axis=1)
+    # преобразование датафрейма в словарь
     perf_ints = perf_df.groupby(level=0, sort=False) \
         .apply(lambda x: [{'type': e[0],
                            'date': e[1],
@@ -61,7 +64,9 @@ def fes_reader(fes_path):
     fes_df['well'] = fes_df['well'].apply(well_renaming)
     fes_df.dropna(inplace=True)
     fes_df.set_index('well', inplace=True)
-
+    # перестановка столбцов для сохранения установленного порядка
+    fes_df = fes_df.reindex(['top', 'bot', 'soil'], axis=1)
+    # преобразование датафрейма в словарь
     fes_dict = fes_df.groupby(level=0, sort=False) \
         .apply(lambda x: [{'top': e[0],
                            'bot': e[1],

@@ -2,6 +2,7 @@ from tqdm import tqdm
 import datetime
 
 
+# бинарный поиск индекса для вставки элемента в отсортированный массив
 def bisect_left(a, x, lo=0, hi=None, param='bot'):
     if lo < 0:
         raise ValueError('lo must be non-negative')

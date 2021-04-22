@@ -21,7 +21,7 @@ def replace_slash(file_path):
     return file_path.replace('\\', slash_map[platform])
 
 
-# очистка папке output_folder
+# очистка папки output_folder
 def clear_out_folder(output_folder):
     files = os.listdir(output_folder)
     for f in files:
