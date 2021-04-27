@@ -1,21 +1,22 @@
 import pandas as pd
+import json
 
 
 def rename_columns(df):
     col_names = {'well': '', 'top': '', 'bot': '',
                  'soil': '', 'date': '', 'type': ''}
     for column in df.columns.values:
-        if 'скв' in column:
+        if ('скв' in column) or ('skw_' in column):
             col_names['well'] = column
-        elif ('нач' in column) or ('кров' in column) or ('верх' in column):
+        elif ('verh' in column) or ('krow' in column) or ('верх' in column):
             col_names['top'] = column
-        elif ('кон' in column) or ('подош' in column) or ('низ' in column):
+        elif ('niz' in column) or ('podosh' in column) or ('низ' in column):
             col_names['bot'] = column
-        elif ('нефтенас' in column) or ('н_нас' in column):
+        elif ('nnas' in column) or ('н_нас' in column):
             col_names['soil'] = column
-        elif 'дата_перф' in column:
+        elif ('дата_перф' in column) or (column == 'dat'):
             col_names['date'] = column
-        elif 'цель' in column:
+        elif ('цель' in column) or ('tip' in column):
             col_names['type'] = column
     df.rename(columns={col_names['bot']: 'bot', col_names['top']: 'top',
                        col_names['well']: 'well', col_names['soil']: 'soil',
@@ -28,7 +29,7 @@ def rename_columns(df):
 
 def perf_reader(perf_path):
     print('started reading perf xl')
-    perf_df = pd.read_excel(perf_path, engine='openpyxl', skiprows=1)
+    perf_df = read_df(perf_path)
     print('done reading perf xl and started processing perf data')
     perf_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
     rename_columns(perf_df)
@@ -57,7 +58,7 @@ def perf_reader(perf_path):
 
 def fes_reader(fes_path):
     print('started reading fes xl')
-    fes_df = pd.read_excel(fes_path, engine='openpyxl', skiprows=1)
+    fes_df = read_df(fes_path)
     print('done reading fes xl')
     fes_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
     rename_columns(fes_df)
@@ -94,3 +95,14 @@ def well_renaming(w_name):
         return w_name.split('/')[0].lower()
     else:
         return w_name.lower()
+
+
+def read_df(df_path):
+    if '.xl' in df_path:
+        return pd.read_excel(df_path, engine='openpyxl', skiprows=1)
+    elif '.json' in df_path:
+        with open(df_path, 'r') as f:
+            data = json.dumps(json.load(f))
+        return pd.read_json(data, orient='records')
+    else:
+        return None
