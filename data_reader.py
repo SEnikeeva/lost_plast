@@ -1,5 +1,6 @@
 import pandas as pd
 import json
+from dateutil import parser
 
 
 def rename_columns(df):
@@ -8,7 +9,7 @@ def rename_columns(df):
     for column in df.columns.values:
         if ('скв' in column) or ('skw_nam' in column) or (column == 'skw'):
             col_names['well'] = column
-        elif ('verh' in column) or ('krow' in column) or ('верх' in column):
+        elif ('verh' in column) or ('krow' == column) or ('верх' in column):
             col_names['top'] = column
         elif ('niz' in column) or ('podosh' in column) or ('низ' in column):
             col_names['bot'] = column
@@ -33,7 +34,10 @@ def perf_reader(perf_path):
     print('done reading perf xl and started processing perf data')
     perf_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
     rename_columns(perf_df)
-    perf_df['date'] = perf_df['date'].dt.date
+    try:
+        perf_df['date'] = perf_df['date'].dt.date
+    except:
+        perf_df['date'] = perf_df['date'].apply(lambda str_date: parser.parse(str_date).date())
     perf_df.sort_values(by=['well', 'date'], ascending=False, inplace=True)
     # определение вида перфорации
     perf_df['type'] = perf_df['type'].apply(get_type)

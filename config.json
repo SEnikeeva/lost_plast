@@ -1,6 +1,6 @@
 {
     "SOIL_CUT": 60,
-    "perf_path": "armitz/miner/ARX_PERF.xlsx",
-    "fes_path": "armitz/miner/QINF.xlsx",
+    "perf_path": "Перфорация.json",
+    "fes_path": "РИГИС.json",
     "act_perf_year": ""
 }
