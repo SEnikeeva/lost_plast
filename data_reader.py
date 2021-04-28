@@ -6,7 +6,7 @@ def rename_columns(df):
     col_names = {'well': '', 'top': '', 'bot': '',
                  'soil': '', 'date': '', 'type': ''}
     for column in df.columns.values:
-        if ('скв' in column) or ('skw_' in column):
+        if ('скв' in column) or ('skw_nam' in column) or (column == 'skw'):
             col_names['well'] = column
         elif ('verh' in column) or ('krow' in column) or ('верх' in column):
             col_names['top'] = column
@@ -16,7 +16,7 @@ def rename_columns(df):
             col_names['soil'] = column
         elif ('дата_перф' in column) or (column == 'dat'):
             col_names['date'] = column
-        elif ('цель' in column) or ('tip' in column):
+        elif ('цель' in column) or ('_cel' in column):
             col_names['type'] = column
     df.rename(columns={col_names['bot']: 'bot', col_names['top']: 'top',
                        col_names['well']: 'well', col_names['soil']: 'soil',
@@ -92,9 +92,9 @@ def well_renaming(w_name):
     if type(w_name) is not str:
         return w_name
     if '/' in w_name:
-        return w_name.split('/')[0].lower()
+        return w_name.split('/')[0].lower().strip()
     else:
-        return w_name.lower()
+        return w_name.lower().strip()
 
 
 def read_df(df_path):
