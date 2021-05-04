@@ -3,6 +3,70 @@ import json
 from dateutil import parser
 
 
+class DataReader:
+    def __init__(self):
+        self.perf_wells = []
+        self.rigsw_wells = []
+
+    def perf_reader(self, perf_path):
+        print('started reading perf xl')
+        perf_df = read_df(perf_path)
+        print('done reading perf xl and started processing perf data')
+        perf_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
+        rename_columns(perf_df)
+        try:
+            perf_df['date'] = perf_df['date'].dt.date
+        except:
+            perf_df['date'] = perf_df['date'].apply(
+                lambda str_date: parser.parse(str_date).date())
+        perf_df.sort_values(by=['well', 'date'], ascending=False, inplace=True)
+        # определение вида перфорации
+        perf_df['type'] = perf_df['type'].apply(get_type)
+        perf_df.drop(perf_df[perf_df['type'] == -1].index, inplace=True)
+        # переименовка скважин (удаление слэша)
+        perf_df['well'] = perf_df['well'].apply(well_renaming)
+        self.perf_wells = perf_df['well'].unique()
+        perf_df.set_index('well', inplace=True)
+        # перестановка столбцов для сохранения установленного порядка
+        perf_df = perf_df.reindex(['type', 'date', 'top', 'bot'], axis=1)
+        # преобразование датафрейма в словарь
+        perf_ints = perf_df.groupby(level=0, sort=False) \
+            .apply(lambda x: [{'type': e[0],
+                               'date': e[1],
+                               'top': e[2],
+                               'bot': e[3]}
+                              for e in x.values]) \
+            .to_dict()
+
+        return perf_ints
+
+    def fes_reader(self, fes_path):
+        print('started reading fes xl')
+        fes_df = read_df(fes_path)
+        print('done reading fes xl')
+        fes_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
+        rename_columns(fes_df)
+        fes_df['well'] = fes_df['well'].apply(well_renaming)
+        fes_df.dropna(inplace=True)
+        self.rigsw_wells = fes_df['well'].unique()
+        fes_df.set_index('well', inplace=True)
+        # перестановка столбцов для сохранения установленного порядка
+        fes_df = fes_df.reindex(['top', 'bot', 'soil'], axis=1)
+        # преобразование датафрейма в словарь
+        fes_dict = fes_df.groupby(level=0, sort=False) \
+            .apply(lambda x: [{'top': e[0],
+                               'bot': e[1],
+                               'soil': e[2]}
+                              for e in x.values]) \
+            .to_dict()
+        print('done processing data')
+        return fes_dict
+
+    def well_diff(self):
+        return list(set(self.perf_wells).difference(self.rigsw_wells)),\
+               list(set(self.rigsw_wells).difference(self.perf_wells))
+
+
 def rename_columns(df):
     col_names = {'well': '', 'top': '', 'bot': '',
                  'soil': '', 'date': '', 'type': ''}
@@ -26,60 +90,6 @@ def rename_columns(df):
     col_names_set = set(df.columns)
     df.drop(columns=list(col_names_set.difference(col_names.keys())),
             inplace=True)
-
-
-def perf_reader(perf_path):
-    print('started reading perf xl')
-    perf_df = read_df(perf_path)
-    print('done reading perf xl and started processing perf data')
-    perf_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
-    rename_columns(perf_df)
-    try:
-        perf_df['date'] = perf_df['date'].dt.date
-    except:
-        perf_df['date'] = perf_df['date'].apply(lambda str_date: parser.parse(str_date).date())
-    perf_df.sort_values(by=['well', 'date'], ascending=False, inplace=True)
-    # определение вида перфорации
-    perf_df['type'] = perf_df['type'].apply(get_type)
-    perf_df.drop(perf_df[perf_df['type'] == -1].index, inplace=True)
-    # переименовка скважин (удаление слэша)
-    perf_df['well'] = perf_df['well'].apply(well_renaming)
-
-    perf_df.set_index('well', inplace=True)
-    # перестановка столбцов для сохранения установленного порядка
-    perf_df = perf_df.reindex(['type', 'date', 'top', 'bot'], axis=1)
-    # преобразование датафрейма в словарь
-    perf_ints = perf_df.groupby(level=0, sort=False) \
-        .apply(lambda x: [{'type': e[0],
-                           'date': e[1],
-                           'top': e[2],
-                           'bot': e[3]}
-                          for e in x.values]) \
-        .to_dict()
-
-    return perf_ints
-
-
-def fes_reader(fes_path):
-    print('started reading fes xl')
-    fes_df = read_df(fes_path)
-    print('done reading fes xl')
-    fes_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
-    rename_columns(fes_df)
-    fes_df['well'] = fes_df['well'].apply(well_renaming)
-    fes_df.dropna(inplace=True)
-    fes_df.set_index('well', inplace=True)
-    # перестановка столбцов для сохранения установленного порядка
-    fes_df = fes_df.reindex(['top', 'bot', 'soil'], axis=1)
-    # преобразование датафрейма в словарь
-    fes_dict = fes_df.groupby(level=0, sort=False) \
-        .apply(lambda x: [{'top': e[0],
-                           'bot': e[1],
-                           'soil': e[2]}
-                          for e in x.values]) \
-        .to_dict()
-    print('done processing data')
-    return fes_dict
 
 
 def get_type(type_str):

@@ -4,7 +4,7 @@ import os
 import sys
 from datetime import date
 
-from data_reader import fes_reader, perf_reader
+from data_reader import DataReader
 from finder import find_layers
 from actual_perf import get_actual_perf
 from writexl import write_layers, write_act_perf
@@ -65,16 +65,26 @@ if __name__ == '__main__':
             sys.exit()
     perf_path = replace_slash(input_folder + '\\' + perf_path)
     fes_path = replace_slash(input_folder + '\\' + fes_path)
+
+    dr = DataReader()
     try:
-        perf_ints = perf_reader(perf_path)
+        perf_ints = dr.perf_reader(perf_path)
     except BaseException as e:
         logging.error("Error loading perf file. " + str(e))
         sys.exit()
     try:
-        fes_dict = fes_reader(fes_path)
+        fes_dict = dr.fes_reader(fes_path)
     except BaseException as e:
         logging.error("Error loading fes file. " + str(e))
         sys.exit()
+
+    perf_rig_diff, rig_perf_diff = dr.well_diff()
+    if len(perf_rig_diff) > 0:
+        logging.warning("These wells in perf file are absent in rigis "
+                        + str(perf_rig_diff))
+    if len(rig_perf_diff) > 0:
+        logging.warning("These wells in rigis file are absent in perf "
+                        + str(rig_perf_diff))
 
     try:
         lost_layers = find_layers(perf_ints, fes_dict, SOIL_CUT)
