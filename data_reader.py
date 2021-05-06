@@ -7,6 +7,7 @@ class DataReader:
     def __init__(self):
         self.perf_wells = []
         self.rigsw_wells = []
+        self.sl_wells = set()
 
     def perf_reader(self, perf_path):
         print('started reading perf xl')
@@ -24,7 +25,7 @@ class DataReader:
         perf_df['type'] = perf_df['type'].apply(get_type)
         perf_df.drop(perf_df[perf_df['type'] == -1].index, inplace=True)
         # переименовка скважин (удаление слэша)
-        perf_df['well'] = perf_df['well'].apply(well_renaming)
+        perf_df['well'] = perf_df['well'].apply(self.well_renaming)
         self.perf_wells = perf_df['well'].unique()
         perf_df.set_index('well', inplace=True)
         # перестановка столбцов для сохранения установленного порядка
@@ -46,7 +47,7 @@ class DataReader:
         print('done reading fes xl')
         fes_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
         rename_columns(fes_df)
-        fes_df['well'] = fes_df['well'].apply(well_renaming)
+        fes_df['well'] = fes_df['well'].apply(self.well_renaming)
         fes_df.dropna(inplace=True)
         self.rigsw_wells = fes_df['well'].unique()
         fes_df.set_index('well', inplace=True)
@@ -65,6 +66,15 @@ class DataReader:
     def well_diff(self):
         return list(set(self.perf_wells).difference(self.rigsw_wells)),\
                list(set(self.rigsw_wells).difference(self.perf_wells))
+               
+    def well_renaming(self, w_name):
+        if type(w_name) is not str:
+            return w_name
+        if '/' in w_name:
+            self.sl_wells.add(w_name)
+            return w_name.split('/')[0].lower().strip()
+        else:
+            return w_name.lower().strip()
 
 
 def rename_columns(df):
@@ -100,15 +110,6 @@ def get_type(type_str):
             ('изоляц' in type_str.lower()) and ('раб' in type_str.lower())):
         return 0
     return 1
-
-
-def well_renaming(w_name):
-    if type(w_name) is not str:
-        return w_name
-    if '/' in w_name:
-        return w_name.split('/')[0].lower().strip()
-    else:
-        return w_name.lower().strip()
 
 
 def read_df(df_path):
