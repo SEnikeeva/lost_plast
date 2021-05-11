@@ -5,9 +5,11 @@ from dateutil import parser
 
 class DataReader:
     def __init__(self):
+        self.sl_wells = set()
         self.perf_wells = []
         self.rigsw_wells = []
-        self.sl_wells = set()
+        self.perf_df = None
+        self.frs_df = None
 
     def perf_reader(self, perf_path):
         print('started reading perf xl')
@@ -24,6 +26,7 @@ class DataReader:
         # определение вида перфорации
         perf_df['type'] = perf_df['type'].apply(get_type)
         perf_df.drop(perf_df[perf_df['type'] == -1].index, inplace=True)
+        self.perf_df = perf_df
         # переименовка скважин (удаление слэша)
         perf_df['well'] = perf_df['well'].apply(self.well_renaming)
         self.perf_wells = perf_df['well'].unique()
@@ -47,6 +50,7 @@ class DataReader:
         print('done reading fes xl')
         fes_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
         rename_columns(fes_df)
+        self.frs_df =fes_df
         fes_df['well'] = fes_df['well'].apply(self.well_renaming)
         fes_df.dropna(inplace=True)
         self.rigsw_wells = fes_df['well'].unique()
@@ -66,7 +70,7 @@ class DataReader:
     def well_diff(self):
         return list(set(self.perf_wells).difference(self.rigsw_wells)),\
                list(set(self.rigsw_wells).difference(self.perf_wells))
-               
+
     def well_renaming(self, w_name):
         if type(w_name) is not str:
             return w_name
