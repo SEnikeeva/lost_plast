@@ -23,17 +23,42 @@ def get_actual_perf(perf_ints, act_perf_year=None):
         act_perf_year = datetime.datetime.now().date()
     for well in tqdm(perf_ints.keys()):
         act_perf_well = []
+        height = 9999
+        sb = False
         for row in perf_ints[well]:
             if row['date'] > act_perf_year:
                 continue
             top = row['top']
             bot = row['bot']
             perf_type = row['type']
-
+            layer = row['layer']
+            idx_t = bisect_left(act_perf_well, top)
+            if sb:
+                if perf_type != 3:
+                    break
+                else:
+                    perf_type = 1
+            elif perf_type == 3:
+                sb = True
+                perf_type = 1
+            if top >= height:
+                continue
+            else:
+                if bot > height:
+                    bot = height
+            if perf_type == 2:
+                if (idx_t < len(act_perf_well))\
+                            and (act_perf_well[idx_t]['top'] <= top)\
+                            and (act_perf_well[idx_t]['bot'] >= bot)\
+                            and (act_perf_well[idx_t]['perf_type'] == 1):
+                        perf_type = 0
+                else:
+                    height = top
+                    perf_type = 0
             idx_t = bisect_left(act_perf_well, top)
             if idx_t == len(act_perf_well):
                 act_perf_well.append({'well': well, 'top': top, 'bot': bot,
-                                      'perf_type': perf_type})
+                                      'perf_type': perf_type, 'layer': layer})
             else:
                 shift = 0
                 if act_perf_well[idx_t]['top'] > top:
@@ -44,7 +69,7 @@ def get_actual_perf(perf_ints, act_perf_year=None):
                             act_perf_well.insert(idx_t,
                                                  {'well': well, 'top': top,
                                                   'bot': bot,
-                                                  'perf_type': perf_type})
+                                                  'perf_type': perf_type, 'layer': layer})
                             shift += 1
                     else:
                         act_perf_well.insert(idx_t,
@@ -52,7 +77,7 @@ def get_actual_perf(perf_ints, act_perf_year=None):
                                               'bot': bot if
                                               act_perf_well[idx_t]['top'] > bot else
                                               act_perf_well[idx_t]['top'],
-                                              'perf_type': perf_type})
+                                              'perf_type': perf_type, 'layer': layer})
                         shift += 1
                 idx_b = bisect_left(act_perf_well, bot, param='top')
                 idx_t += shift
@@ -71,20 +96,21 @@ def get_actual_perf(perf_ints, act_perf_year=None):
                             if i == end - 1:
                                 if bot > act_perf_well[i]['bot']:
                                     to_append.append(dict(well=well, top=act_perf_well[i]['bot'],
-                                                          bot=bot, perf_type=perf_type, idx=i + shift))
+                                                          bot=bot, perf_type=perf_type, layer=layer, idx=i + shift))
                                     shift += 1
 
                             else:
                                 to_append.append(dict(well=well, top=act_perf_well[i]['bot'],
                                                       bot=act_perf_well[i + 1]['top'],
-                                                      perf_type=perf_type, idx=i + shift))
+                                                      perf_type=perf_type, layer=layer, idx=i + shift))
                                 shift += 1
                     for el in to_append:
                         act_perf_well.insert(el['idx'],
                                              {'well': el['well'],
                                               'top':  el['top'],
                                               'bot':  el['bot'],
-                                              'perf_type': el['perf_type']})
+                                              'perf_type': el['perf_type'],
+                                              'layer': el['layer']})
                     if (idx_b == len(act_perf_well)) and (act_perf_well[-1]['bot'] < bot):
                         if act_perf_well[-1]['perf_type'] == perf_type:
                             act_perf_well[-1]['bot'] = bot
@@ -92,6 +118,6 @@ def get_actual_perf(perf_ints, act_perf_year=None):
                             act_perf_well.append({'well': well,
                                                   'top': act_perf_well[-1]['bot'],
                                                   'bot': bot,
-                                                  'perf_type': perf_type})
+                                                  'perf_type': perf_type, 'layer': layer})
         act_perf.extend(act_perf_well)
     return act_perf
