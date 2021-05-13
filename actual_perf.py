@@ -41,17 +41,17 @@ def get_actual_perf(perf_ints, act_perf_year=None):
             elif perf_type == 3:
                 sb = True
                 perf_type = 1
-            if top >= height:
+            if (top >= height) and (perf_type in [1, 3]):
                 continue
             else:
-                if bot > height:
+                if (bot > height) and (perf_type in [1, 3]):
                     bot = height
             if perf_type == 2:
-                if (idx_t < len(act_perf_well))\
-                            and (act_perf_well[idx_t]['top'] <= top)\
-                            and (act_perf_well[idx_t]['bot'] >= bot)\
-                            and (act_perf_well[idx_t]['perf_type'] == 1):
-                        perf_type = 0
+                if (idx_t < len(act_perf_well)) \
+                        and (act_perf_well[idx_t]['top'] <= top) \
+                        and (act_perf_well[idx_t]['bot'] >= bot) \
+                        and (act_perf_well[idx_t]['perf_type'] == 1):
+                    perf_type = 0
                 else:
                     height = top
                     perf_type = 0
@@ -107,8 +107,8 @@ def get_actual_perf(perf_ints, act_perf_year=None):
                     for el in to_append:
                         act_perf_well.insert(el['idx'],
                                              {'well': el['well'],
-                                              'top':  el['top'],
-                                              'bot':  el['bot'],
+                                              'top': el['top'],
+                                              'bot': el['bot'],
                                               'perf_type': el['perf_type'],
                                               'layer': el['layer']})
                     if (idx_b == len(act_perf_well)) and (act_perf_well[-1]['bot'] < bot):

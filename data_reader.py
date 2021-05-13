@@ -48,18 +48,7 @@ def read_df(df_path):
     elif '.json' in df_path:
         with open(df_path, 'r') as f:
             json_data = json.load(f)
-            n = []
-            for el in json_data:
-                try:
-                    if el['skw_nam'].lower().strip() == '3133':
-                        n.append(el)
-                except:
-                    continue
-            k = json.dumps(n)
-            k = pd.read_json(k, orient='records')
-            data = json.dumps(json_data)
         return pd.DataFrame(json_data)
-        # return pd.read_json(data, orient='records')
     else:
         return None
 
@@ -86,7 +75,9 @@ class DataReader:
         except:
             perf_df['date'] = perf_df['date'].apply(
                 lambda str_date: parser.parse(str_date).date())
-        perf_df.sort_values(by=['well', 'date'], ascending=False, inplace=True, kind='mergesort')
+        perf_df.sort_values(by=['well', 'date'], ascending=True, inplace=True, kind='mergesort')
+        perf_df.reset_index(drop=True, inplace=True)
+        perf_df = perf_df[::-1]
         # определение вида перфорации
         perf_df['type'] = perf_df.apply(
             lambda x: self.get_type(x['type'], x['type_perf'], x['layer']), axis=1)
@@ -134,8 +125,18 @@ class DataReader:
         return fes_dict
 
     def well_diff(self):
-        return list(set(self.perf_wells).difference(self.rigsw_wells)), \
-               list(set(self.rigsw_wells).difference(self.perf_wells))
+        perf = list(set(self.perf_wells).difference(self.rigsw_wells))
+        rigsw = list(set(self.rigsw_wells).difference(self.perf_wells))
+        max_len = max(len(perf), len(rigsw))
+        for i in range(max_len - len(perf)):
+            perf.append(None)
+        for i in range(max_len - len(rigsw)):
+            rigsw.append(None)
+        diff_well_df = pd.DataFrame(columns=['нет в перф', 'нет в ригис'])
+
+        diff_well_df['нет в перф'] = rigsw
+        diff_well_df['нет в ригис'] = perf
+        return perf, rigsw, diff_well_df
 
     def well_renaming(self, w_name):
         if type(w_name) is not str:

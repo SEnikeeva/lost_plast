@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 from datetime import date
+import pandas as pd
 
 from data_reader import DataReader
 from finder import find_layers
@@ -36,6 +37,21 @@ def get_year(conf_perf_year):
         return date(year=int(conf_perf_year), month=1, day=1)
     except:
         return None
+
+
+def df_to_dict(df):
+    df.set_index('well', inplace=True)
+    # перестановка столбцов для сохранения установленного порядка
+    perf_df = df.reindex(['top', 'bot', 'layer'], axis=1)
+    # преобразование датафрейма в словарь
+    act_perf_ints = perf_df.groupby(level=0, sort=False) \
+        .apply(lambda x: [{'top': e[0],
+                           'bot': e[1],
+                           'layer': e[2]}
+                          for e in x.values]) \
+        .to_dict()
+
+    return act_perf_ints
 
 
 if __name__ == '__main__':
@@ -78,19 +94,14 @@ if __name__ == '__main__':
         logging.error("Error loading fes file. " + str(e))
         sys.exit()
 
-    perf_rig_diff, rig_perf_diff = dr.well_diff()
+    perf_rig_diff, rig_perf_diff, diff_well_df = dr.well_diff()
     if len(perf_rig_diff) > 0:
         logging.warning("These wells in perf file are absent in rigis "
                         + str(perf_rig_diff))
     if len(rig_perf_diff) > 0:
         logging.warning("These wells in rigis file are absent in perf "
                         + str(rig_perf_diff))
-
-    try:
-        lost_layers = find_layers(perf_ints, fes_dict, SOIL_CUT)
-    except BaseException as e:
-        logging.error("Error while finding layers " + str(e))
-        sys.exit()
+    diff_well_df.to_excel(replace_slash(out_folder + '\\' + 'wells_diff.xlsx'), index=False)
 
     try:
         act_perf = get_actual_perf(perf_ints, act_perf_year)
@@ -98,6 +109,13 @@ if __name__ == '__main__':
         logging.error("Error while getting the actual perforation " + str(e))
         sys.exit()
 
+    act_perf_ints = df_to_dict(pd.read_json(json.dumps(act_perf)))
+
+    try:
+        lost_layers = find_layers(perf_ints, fes_dict, SOIL_CUT)
+    except BaseException as e:
+        logging.error("Error while finding layers " + str(e))
+        sys.exit()
     # сохранение данных
     try:
         write_layers(output_path_l, lost_layers)
