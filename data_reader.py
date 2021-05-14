@@ -148,7 +148,15 @@ class DataReader:
             return w_name.lower().strip()
 
     def get_type(self, type_str, type_perf, layer):
+        """
 
+        :param type_str: цель перфорации
+        :param type_perf: тип перфорации
+        :param layer: название пласта
+        :return: 1 - открытый, 0 - закрытый,
+         3 - бурение бокового ствола, 2 - тип закрытого, который перекрывает нижележащие
+
+        """
         if (type(type_str) is not str) or \
                 is_contains(type_str.lower(), self.key_words['-1']):
             return -1
