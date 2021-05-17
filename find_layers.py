@@ -41,7 +41,7 @@ if __name__ == '__main__':
     out_path_log = replace_slash(out_folder + "\\" + "Report.txt")
     logging.basicConfig(format=u'%(levelname)-8s : %(message)s', filename=out_path_log, filemode='w')
 
-    with open("config.json", 'r') as f:
+    with open("config.json", 'r', encoding='utf-8') as f:
         try:
             conf = json.load(f)
             SOIL_CUT = float(conf["SOIL_CUT"])

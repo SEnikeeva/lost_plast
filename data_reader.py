@@ -46,7 +46,7 @@ def read_df(df_path):
     if '.xl' in df_path:
         return pd.read_excel(df_path, engine='openpyxl', skiprows=1)
     elif '.json' in df_path:
-        with open(df_path, 'r') as f:
+        with open(df_path, 'r', encoding='utf-8') as f:
             json_data = json.load(f)
         return pd.DataFrame(json_data)
     else:
