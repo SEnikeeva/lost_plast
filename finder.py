@@ -19,10 +19,11 @@ def find_layers(perf_ints, fes_dict, soil_cut):
             top = row['top']
             bot = row['bot']
             soil = row['soil']
+            layer = row['layer']
             if soil < soil_cut:
                 continue
             if not is_perf(top, bot, ints):
                 lost_layers.append({'well': well, 'top': top,
-                                    'bot': bot, 'soil': soil})
+                                    'bot': bot, 'soil': soil, 'layer': layer})
     return lost_layers
 

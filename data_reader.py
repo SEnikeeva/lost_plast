@@ -113,12 +113,13 @@ class DataReader:
         self.rigsw_wells = fes_df['well'].unique()
         fes_df.set_index('well', inplace=True)
         # перестановка столбцов для сохранения установленного порядка
-        fes_df = fes_df.reindex(['top', 'bot', 'soil'], axis=1)
+        fes_df = fes_df.reindex(['top', 'bot', 'soil', 'layer'], axis=1)
         # преобразование датафрейма в словарь
         fes_dict = fes_df.groupby(level=0, sort=False) \
             .apply(lambda x: [{'top': e[0],
                                'bot': e[1],
-                               'soil': e[2]}
+                               'soil': e[2],
+                               'layer': e[3]}
                               for e in x.values]) \
             .to_dict()
         print('done processing data')

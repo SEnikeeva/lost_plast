@@ -1,2 +1,2 @@
-WARNING  : These wells in perf file are absent in rigis ['59', '1974', '20106', '184', '270', '32004']
+WARNING  : These wells in perf file are absent in rigis ['184', '32004', '20106', '270', '59', '1974']
 WARNING  : These wells in rigis file are absent in perf ['5009', None, None, None, None, None]
