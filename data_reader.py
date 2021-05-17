@@ -15,6 +15,8 @@ def rename_columns(df):
                  'soil': '', 'date': '', 'type': '', 'type_perf': '',
                  'layer': ''}
     for column in df.columns.values:
+        if type(column) is not str:
+            continue
         if ('скв' in column) or ('skw_nam' in column) or (column == 'skw'):
             col_names['well'] = column
         elif ('verh' in column) or ('krow' == column) or ('верх' in column):
@@ -44,7 +46,15 @@ def rename_columns(df):
 
 def read_df(df_path):
     if '.xl' in df_path:
-        return pd.read_excel(df_path, engine='openpyxl', skiprows=1)
+        df = pd.read_excel(df_path, engine='openpyxl', skiprows=0)
+        df.rename(
+            columns=lambda x: x if type(x) is not str else x.lower().strip(),
+            inplace=True)
+        if ('скв' not in df.columns) and ('skw_nam' not in df.columns) \
+                and ('skw_nam' not in df.columns):
+            return pd.read_excel(df_path, engine='openpyxl', skiprows=1)
+        else:
+            return df
     elif '.json' in df_path:
         with open(df_path, 'r', encoding='utf-8') as f:
             json_data = json.load(f)
@@ -68,7 +78,7 @@ class DataReader:
         print('started reading perf xl')
         perf_df = read_df(perf_path)
         print('done reading perf xl and started processing perf data')
-        perf_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
+        perf_df.rename(columns=lambda x: x if type(x) is not str else x.lower().strip(), inplace=True)
         rename_columns(perf_df)
         try:
             perf_df['date'] = perf_df['date'].dt.date
@@ -105,7 +115,7 @@ class DataReader:
         print('started reading fes xl')
         fes_df = read_df(fes_path)
         print('done reading fes xl')
-        fes_df.rename(columns=lambda x: x.lower().strip(), inplace=True)
+        fes_df.rename(columns=lambda x: x if type(x) is not str else x.lower().strip(), inplace=True)
         rename_columns(fes_df)
         self.frs_df = fes_df
         fes_df['well'] = fes_df['well'].apply(self.well_renaming)
