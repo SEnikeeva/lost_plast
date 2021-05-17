@@ -45,22 +45,22 @@ if __name__ == '__main__':
         try:
             conf = json.load(f)
             SOIL_CUT = float(conf["SOIL_CUT"])
-            perf_path = conf["perf_path"]
-            fes_path = conf["fes_path"]
+            perf_paths = conf["perf_path"]
+            fes_paths = conf["fes_path"]
         except BaseException as e:
             logging.error("Error loading config file. " + str(e))
             sys.exit()
-    perf_path = replace_slash(input_folder + '\\' + perf_path)
-    fes_path = replace_slash(input_folder + '\\' + fes_path)
+    perf_paths = [replace_slash(input_folder + '\\' + perf_path) for perf_path in perf_paths]
+    fes_paths = [replace_slash(input_folder + '\\' + fes_path) for fes_path in fes_paths]
 
     dr = DataReader()
     try:
-        perf_ints = dr.perf_reader(perf_path)
+        perf_ints = dr.perf_reader(perf_paths)
     except BaseException as e:
         logging.error("Error loading perf file. " + str(e))
         sys.exit()
     try:
-        fes_dict = dr.fes_reader(fes_path)
+        fes_dict = dr.fes_reader(fes_paths)
     except BaseException as e:
         logging.error("Error loading fes file. " + str(e))
         sys.exit()

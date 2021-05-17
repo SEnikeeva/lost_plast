@@ -19,9 +19,9 @@ def rename_columns(df):
             continue
         if ('скв' in column) or ('skw_nam' in column) or (column == 'skw'):
             col_names['well'] = column
-        elif ('verh' in column) or ('krow' == column) or ('верх' in column):
+        elif ('verh' in column) or ('krow' == column) or ('верх' in column) or ('кров' in column):
             col_names['top'] = column
-        elif ('niz' in column) or ('podosh' in column) or ('низ' in column):
+        elif ('niz' in column) or ('podosh' in column) or ('низ' in column) or ('подош' in column):
             col_names['bot'] = column
         elif ('nnas' in column) or ('н_нас' in column):
             col_names['soil'] = column
@@ -31,7 +31,7 @@ def rename_columns(df):
             col_names['type'] = column
         elif ('tip_perf' in column):
             col_names['type_perf'] = column
-        elif ('plast_nam' in column):
+        elif ('plast_nam' in column) or ('пласт' in column):
             col_names['layer'] = column
     df.rename(columns={col_names['bot']: 'bot', col_names['top']: 'top',
                        col_names['well']: 'well', col_names['soil']: 'soil',
@@ -50,7 +50,7 @@ def read_df(df_path):
         df.rename(
             columns=lambda x: x if type(x) is not str else x.lower().strip(),
             inplace=True)
-        if ('скв' not in df.columns) and ('skw_nam' not in df.columns) \
+        if ('скваж' not in df.columns) and ('skw_nam' not in df.columns) \
                 and ('skw_nam' not in df.columns):
             return pd.read_excel(df_path, engine='openpyxl', skiprows=1)
         else:
@@ -74,33 +74,38 @@ class DataReader:
                           '2': ['ый мост', 'пакером', 'гпш', 'рппк', 'шлипс', 'прк(г)'],
                           'd0': ['d0', 'd_0', 'д0', 'д_0']}
 
-    def perf_reader(self, perf_path):
-        print('started reading perf xl')
-        perf_df = read_df(perf_path)
-        print('done reading perf xl and started processing perf data')
-        perf_df.rename(columns=lambda x: x if type(x) is not str else x.lower().strip(), inplace=True)
-        rename_columns(perf_df)
-        try:
-            perf_df['date'] = perf_df['date'].dt.date
-        except:
-            perf_df['date'] = perf_df['date'].apply(
-                lambda str_date: parser.parse(str_date).date())
-        perf_df.sort_values(by=['well', 'date'], ascending=True, inplace=True, kind='mergesort')
-        perf_df.reset_index(drop=True, inplace=True)
-        perf_df = perf_df[::-1]
-        # определение вида перфорации
-        perf_df['type'] = perf_df.apply(
-            lambda x: self.get_type(x['type'], x['type_perf'], x['layer']), axis=1)
-        perf_df.drop(perf_df[perf_df['type'] == -1].index, inplace=True)
-        self.perf_df = perf_df
-        # переименовка скважин (удаление слэша)
-        perf_df['well'] = perf_df['well'].apply(self.well_renaming)
-        self.perf_wells = perf_df['well'].unique()
-        perf_df.set_index('well', inplace=True)
+    def perf_reader(self, perf_paths):
+        count = 1
+        all_perf_df = pd.DataFrame(columns=['type', 'date', 'top', 'bot', 'layer'])
+        for perf_path in perf_paths:
+            print('started reading perf{} xl'.format(count))
+            perf_df = read_df(perf_path)
+            print('done reading perf xl and started processing perf data')
+            perf_df.rename(columns=lambda x: x if type(x) is not str else x.lower().strip(), inplace=True)
+            rename_columns(perf_df)
+            try:
+                perf_df['date'] = perf_df['date'].dt.date
+            except:
+                perf_df['date'] = perf_df['date'].apply(
+                    lambda str_date: parser.parse(str_date).date())
+            perf_df.sort_values(by=['well', 'date'], ascending=True, inplace=True, kind='mergesort')
+            perf_df.reset_index(drop=True, inplace=True)
+            perf_df = perf_df[::-1]
+            # определение вида перфорации
+            perf_df['type'] = perf_df.apply(
+                lambda x: self.get_type(x['type'], x['type_perf'], x['layer']), axis=1)
+            perf_df.drop(perf_df[perf_df['type'] == -1].index, inplace=True)
+            self.perf_df = perf_df
+            # переименовка скважин (удаление слэша)
+            perf_df['well'] = perf_df['well'].apply(self.well_renaming)
+            all_perf_df = all_perf_df.append(perf_df, ignore_index=True)
+            count += 1
+        self.perf_wells = all_perf_df['well'].unique()
+        all_perf_df.set_index('well', inplace=True)
         # перестановка столбцов для сохранения установленного порядка
-        perf_df = perf_df.reindex(['type', 'date', 'top', 'bot', 'layer'], axis=1)
+        all_perf_df = all_perf_df.reindex(['type', 'date', 'top', 'bot', 'layer'], axis=1)
         # преобразование датафрейма в словарь
-        perf_ints = perf_df.groupby(level=0, sort=False) \
+        perf_ints = all_perf_df.groupby(level=0, sort=False) \
             .apply(lambda x: [{'type': e[0],
                                'date': e[1],
                                'top': e[2],
@@ -111,21 +116,26 @@ class DataReader:
 
         return perf_ints
 
-    def fes_reader(self, fes_path):
-        print('started reading fes xl')
-        fes_df = read_df(fes_path)
-        print('done reading fes xl')
-        fes_df.rename(columns=lambda x: x if type(x) is not str else x.lower().strip(), inplace=True)
-        rename_columns(fes_df)
-        self.frs_df = fes_df
-        fes_df['well'] = fes_df['well'].apply(self.well_renaming)
-        fes_df.dropna(inplace=True)
-        self.rigsw_wells = fes_df['well'].unique()
-        fes_df.set_index('well', inplace=True)
+    def fes_reader(self, fes_paths):
+        all_fes_df = pd.DataFrame(columns=['top', 'bot', 'soil', 'layer'])
+        count = 1
+        for fes_path in fes_paths:
+            print('started reading fes{} xl'.format(count))
+            fes_df = read_df(fes_path)
+            print('done reading fes xl')
+            fes_df.rename(columns=lambda x: x if type(x) is not str else x.lower().strip(), inplace=True)
+            rename_columns(fes_df)
+            self.frs_df = fes_df
+            fes_df['well'] = fes_df['well'].apply(self.well_renaming)
+            fes_df.dropna(inplace=True)
+            all_fes_df = all_fes_df.append(fes_df, ignore_index=True)
+            count += 1
+        self.rigsw_wells = all_fes_df['well'].unique()
+        all_fes_df.set_index('well', inplace=True)
         # перестановка столбцов для сохранения установленного порядка
-        fes_df = fes_df.reindex(['top', 'bot', 'soil', 'layer'], axis=1)
+        all_fes_df = all_fes_df.reindex(['top', 'bot', 'soil', 'layer'], axis=1)
         # преобразование датафрейма в словарь
-        fes_dict = fes_df.groupby(level=0, sort=False) \
+        fes_dict = all_fes_df.groupby(level=0, sort=False) \
             .apply(lambda x: [{'top': e[0],
                                'bot': e[1],
                                'soil': e[2],
