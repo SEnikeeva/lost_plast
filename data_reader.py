@@ -29,7 +29,7 @@ def rename_columns(df):
             col_names['date'] = column
         elif ('цель' in column) or ('_cel' in column):
             col_names['type'] = column
-        elif ('tip_perf' in column):
+        elif ('tip_perf' in column) or ('тип' in column):
             col_names['type_perf'] = column
         elif ('plast_nam' in column) or ('пласт' in column):
             col_names['layer'] = column
@@ -51,7 +51,7 @@ def read_df(df_path):
             columns=lambda x: x if type(x) is not str else x.lower().strip(),
             inplace=True)
         if ('скваж' not in df.columns) and ('skw_nam' not in df.columns) \
-                and ('skw_nam' not in df.columns):
+                and ('skw_nam' not in df.columns) and ('скв' not in df.columns):
             return pd.read_excel(df_path, engine='openpyxl', skiprows=1)
         else:
             return df

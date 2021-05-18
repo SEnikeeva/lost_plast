@@ -1,5 +1,5 @@
 {
     "SOIL_CUT": 60,
-    "perf_path": ["Перфорация.xlsx"],
+    "perf_path": ["ARX_PERF2.xlsx", "ARX_PERF.xlsx"],
     "fes_path": ["РИГИС2.xlsx", "РИГИС.xlsx"]
 }
