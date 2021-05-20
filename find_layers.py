@@ -57,31 +57,35 @@ if __name__ == '__main__':
     try:
         perf_ints = dr.perf_reader(perf_paths)
     except BaseException as e:
-        logging.error("Error loading perf file. " + str(e))
+        logging.error("Ошибка при чтении файла с перфорациями. " + str(e))
         sys.exit()
     try:
         fes_dict = dr.fes_reader(fes_paths)
     except BaseException as e:
-        logging.error("Error loading fes file. " + str(e))
+        logging.error("Ошибка при чтении файла с РИГИС. " + str(e))
         sys.exit()
 
     perf_rig_diff, rig_perf_diff, diff_well_df = dr.well_diff()
+    # none_soil_wells = dr.rigsw_wells_none
+    # if len(perf_rig_diff) > 0:
+    #     logging.warning("У данных скважин отсутствует информация по нефтенасыщенности "
+    #                     + str(none_soil_wells))
     if len(perf_rig_diff) > 0:
-        logging.warning("These wells in perf file are absent in rigis "
+        logging.warning("Данные скважины из файла с перфорациями отсутствуют в РИГИС "
                         + str(perf_rig_diff))
     if len(rig_perf_diff) > 0:
-        logging.warning("These wells in rigis file are absent in perf "
+        logging.warning("Данные скважины из файла с РИГИС отсутствуют в перфорациях "
                         + str(rig_perf_diff))
     diff_well_df.to_excel(replace_slash(out_folder + '\\' + 'wells_diff.xlsx'), index=False)
 
     try:
         lost_layers = find_layers(perf_ints, fes_dict, SOIL_CUT)
     except BaseException as e:
-        logging.error("Error while finding layers " + str(e))
+        logging.error("Ошибка при поиске пропущенных пластов " + str(e))
         sys.exit()
     # сохранение данных
     try:
         write_layers(output_path_l, lost_layers)
     except BaseException as e:
-        logging.error("Error while writing results " + str(e))
+        logging.error("Ошибка при записи результатов " + str(e))
         sys.exit()
