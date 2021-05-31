@@ -70,12 +70,12 @@ if __name__ == '__main__':
     # if len(perf_rig_diff) > 0:
     #     logging.warning("У данных скважин отсутствует информация по нефтенасыщенности "
     #                     + str(none_soil_wells))
-    if len(perf_rig_diff) > 0:
-        logging.warning("Данные скважины из файла с перфорациями отсутствуют в РИГИС "
-                        + str(perf_rig_diff))
-    if len(rig_perf_diff) > 0:
-        logging.warning("Данные скважины из файла с РИГИС отсутствуют в перфорациях "
-                        + str(rig_perf_diff))
+    # if len(perf_rig_diff) > 0:
+    #     logging.warning("Данные скважины из файла с перфорациями отсутствуют в РИГИС "
+    #                     + str(perf_rig_diff))
+    # if len(rig_perf_diff) > 0:
+    #     logging.warning("Данные скважины из файла с РИГИС отсутствуют в перфорациях "
+    #                     + str(rig_perf_diff))
     diff_well_df.to_excel(replace_slash(out_folder + '\\' + 'wells_diff.xlsx'), index=False)
 
     try:
