@@ -103,6 +103,7 @@ class DataReader:
             # переименовка скважин (удаление слэша)
             all_perf_df = all_perf_df.append(perf_df, ignore_index=True)
             count += 1
+        all_perf_df = all_perf_df.drop_duplicates()
         all_perf_df.set_index('well', inplace=True)
         # перестановка столбцов для сохранения установленного порядка
         all_perf_df = all_perf_df.reindex(['type', 'date', 'top', 'bot', 'layer'], axis=1)
@@ -135,6 +136,7 @@ class DataReader:
             all_fes_df = all_fes_df.append(fes_df, ignore_index=True)
             count += 1
         self.rigsw_wells_okay = all_fes_df['well'].unique()
+        all_fes_df = all_fes_df.drop_duplicates()
         all_fes_df.set_index('well', inplace=True)
         # перестановка столбцов для сохранения установленного порядка
         all_fes_df = all_fes_df.reindex(['top', 'bot', 'soil', 'layer'], axis=1)
