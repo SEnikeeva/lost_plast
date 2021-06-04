@@ -99,6 +99,7 @@ class DataReader:
                 perf_df['field'] = ''
             self.perf_wells.extend(list(perf_df['well'].unique()))
             self.get_unique_wells(perf_df)
+
             try:
                 perf_df['date'] = perf_df['date'].dt.date
             except:
@@ -136,7 +137,7 @@ class DataReader:
         return perf_ints
 
     def fes_reader(self, fes_paths):
-        all_fes_df = pd.DataFrame(columns=['top', 'bot', 'soil', 'layer'])
+        all_fes_df = pd.DataFrame(columns=['well', 'top', 'bot', 'soil', 'layer', 'well_id'])
         count = 1
         for fes_path in fes_paths:
             print('started reading fes{} xl'.format(count))
@@ -147,6 +148,8 @@ class DataReader:
             self.frs_df = fes_df
             if 'layer' not in fes_df.columns:
                 fes_df['layer'] = ''
+            if 'well_id' not in fes_df.columns:
+                fes_df['well_id'] = ''
             fes_df['well'] = fes_df['well'].apply(self.well_renaming)
             self.rigsw_wells.extend(list(fes_df['well'].unique()))
             self.rigsw_wells_none.extend(list(fes_df[fes_df['soil'].isna()]['well'].unique()))
@@ -157,13 +160,14 @@ class DataReader:
         all_fes_df = all_fes_df.drop_duplicates()
         all_fes_df.set_index('well', inplace=True)
         # перестановка столбцов для сохранения установленного порядка
-        all_fes_df = all_fes_df.reindex(['top', 'bot', 'soil', 'layer'], axis=1)
+        all_fes_df = all_fes_df.reindex(['top', 'bot', 'soil', 'layer', 'well_id'], axis=1)
         # преобразование датафрейма в словарь
         fes_dict = all_fes_df.groupby(level=0, sort=False) \
             .apply(lambda x: [{'top': e[0],
                                'bot': e[1],
                                'soil': e[2],
-                               'layer': e[3]}
+                               'layer': e[3],
+                               'well_id': e[4]}
                               for e in x.values]) \
             .to_dict()
         print('done processing data')
