@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 from dateutil import parser
+import numpy as np
 
 
 def is_contains(w, a):
@@ -13,7 +14,7 @@ def is_contains(w, a):
 def rename_columns(df):
     col_names = {'well': '', 'top': '', 'bot': '',
                  'soil': '', 'date': '', 'type': '', 'type_perf': '',
-                 'layer': ''}
+                 'layer': '', 'well_id': '', 'field': ''}
     for column in df.columns.values:
         if type(column) is not str:
             continue
@@ -33,11 +34,16 @@ def rename_columns(df):
             col_names['type_perf'] = column
         elif ('plast_nam' in column) or ('пласт' in column):
             col_names['layer'] = column
+        elif ('skw_id' in column):
+            col_names['well_id'] = column
+        elif ('obr_nam' in column):
+            col_names['field'] = column
     df.rename(columns={col_names['bot']: 'bot', col_names['top']: 'top',
                        col_names['well']: 'well', col_names['soil']: 'soil',
                        col_names['date']: 'date', col_names['type']: 'type',
                        col_names['type_perf']: 'type_perf',
-                       col_names['layer']: 'layer'},
+                       col_names['layer']: 'layer',
+                       col_names['well_id']: 'well_id', col_names['field']: 'field'},
               inplace=True)
     col_names_set = set(df.columns)
     df.drop(columns=list(col_names_set.difference(col_names.keys())),
@@ -72,6 +78,7 @@ class DataReader:
         self.rigsw_wells_okay = []
         self.perf_df = None
         self.frs_df = None
+        self.unique_perf_wells = []
         self.key_words = {'-1': ['спец', 'наруш', 'циркуляц'],
                           '2': ['ый мост', 'пакером', 'гпш', 'рппк', 'шлипс', 'прк(г)'],
                           'd0': ['d0', 'd_0', 'д0', 'д_0']}
@@ -86,7 +93,12 @@ class DataReader:
             perf_df.rename(columns=lambda x: x if type(x) is not str else x.lower().strip(), inplace=True)
             rename_columns(perf_df)
             perf_df['well'] = perf_df['well'].apply(self.well_renaming)
+            if 'well_id' not in perf_df.columns:
+                perf_df['well_id'] = ''
+            if 'field' not in perf_df.columns:
+                perf_df['field'] = ''
             self.perf_wells.extend(list(perf_df['well'].unique()))
+            self.get_unique_wells(perf_df)
             try:
                 perf_df['date'] = perf_df['date'].dt.date
             except:
@@ -95,6 +107,8 @@ class DataReader:
             perf_df.sort_values(by=['well', 'date'], ascending=True, inplace=True, kind='mergesort')
             perf_df.reset_index(drop=True, inplace=True)
             perf_df = perf_df[::-1]
+            if 'layer' not in perf_df.columns:
+                perf_df['layer'] = ''
             # определение вида перфорации
             perf_df['type'] = perf_df.apply(
                 lambda x: self.get_type(x['type'], x['type_perf'], x['layer']), axis=1)
@@ -106,14 +120,16 @@ class DataReader:
         all_perf_df = all_perf_df.drop_duplicates()
         all_perf_df.set_index('well', inplace=True)
         # перестановка столбцов для сохранения установленного порядка
-        all_perf_df = all_perf_df.reindex(['type', 'date', 'top', 'bot', 'layer'], axis=1)
+        all_perf_df = all_perf_df.reindex(['type', 'date', 'top', 'bot', 'layer', 'well_id', 'field'], axis=1)
         # преобразование датафрейма в словарь
         perf_ints = all_perf_df.groupby(level=0, sort=False) \
             .apply(lambda x: [{'type': e[0],
                                'date': e[1],
                                'top': e[2],
                                'bot': e[3],
-                               'layer': e[4]}
+                               'layer': e[4],
+                               'well_id': e[5],
+                               'field': e[6]}
                               for e in x.values]) \
             .to_dict()
 
@@ -129,6 +145,8 @@ class DataReader:
             fes_df.rename(columns=lambda x: x if type(x) is not str else x.lower().strip(), inplace=True)
             rename_columns(fes_df)
             self.frs_df = fes_df
+            if 'layer' not in fes_df.columns:
+                fes_df['layer'] = ''
             fes_df['well'] = fes_df['well'].apply(self.well_renaming)
             self.rigsw_wells.extend(list(fes_df['well'].unique()))
             self.rigsw_wells_none.extend(list(fes_df[fes_df['soil'].isna()]['well'].unique()))
@@ -177,7 +195,7 @@ class DataReader:
         else:
             return w_name.lower().strip()
 
-    def get_type(self, type_str, type_perf, layer):
+    def get_type(self, type_str, type_perf, layer=''):
         """
 
         :param type_str: цель перфорации
@@ -204,3 +222,32 @@ class DataReader:
         elif ('бок' in type_str.lower()) and ('ств' in type_str.lower()):
             return 3
         return 1
+
+    def get_unique_wells(self, perf_df):
+        for well in perf_df['well'].unique():
+            well_df = perf_df[perf_df['well'] == well]
+            dupl_by_id = well_df.loc[~well_df.duplicated(subset='well_id')]
+            dupl_by_field = well_df.loc[~well_df.duplicated(subset='field')]
+            if len(dupl_by_id) > 1:
+                dict_ = dupl_by_id.to_dict(orient='records')
+                dict_none = []
+                for e in dict_:
+                    if (type(e['well_id']) is float) and (np.isnan(e['well_id'])) or (e['well_id'] is None):
+                        continue
+                    else:
+                        e['comment'] = 'Неуникальное название скважины относительно id'
+                        dict_none.append(e)
+                if len(dict_none) > 1:
+                    self.unique_perf_wells.extend(dict_none)
+            if len(dupl_by_field) > 1:
+                dict_ = dupl_by_field.to_dict(orient='records')
+                dict_none = []
+                for e in dict_:
+                    if (type(e['field']) is float) and (np.isnan(e['field'])) or (e['field'] is None):
+                        continue
+                    else:
+                        e['comment'] = 'Неуникальное название скважины относительно месторождения'
+                        dict_none.append(e)
+                if len(dict_none) > 1:
+                    self.unique_perf_wells.extend(dict_none)
+

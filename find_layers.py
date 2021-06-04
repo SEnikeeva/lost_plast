@@ -59,6 +59,10 @@ if __name__ == '__main__':
     except BaseException as e:
         logging.error("Ошибка при чтении файла с перфорациями. " + str(e))
         sys.exit()
+
+    dupl_wells = dr.unique_perf_wells
+    for well in dupl_wells:
+        logging.warning(f"{well['comment']} {well['well']} {well.get('well_id')} {well.get('field')}")
     try:
         fes_dict = dr.fes_reader(fes_paths)
     except BaseException as e:
