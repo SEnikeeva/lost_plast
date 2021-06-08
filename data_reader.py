@@ -2,6 +2,7 @@ import pandas as pd
 import json
 from dateutil import parser
 import numpy as np
+from tqdm import tqdm
 
 
 def is_contains(w, a):
@@ -14,7 +15,7 @@ def is_contains(w, a):
 def rename_columns(df):
     col_names = {'well': '', 'top': '', 'bot': '',
                  'soil': '', 'date': '', 'type': '', 'type_perf': '',
-                 'layer': '', 'well_id': '', 'field': ''}
+                 'layer': '', 'well_id': '', 'field': '', 'trunk': ''}
     for column in df.columns.values:
         if type(column) is not str:
             continue
@@ -38,12 +39,14 @@ def rename_columns(df):
             col_names['well_id'] = column
         elif ('obr_nam' in column):
             col_names['field'] = column
+        elif ('ствол' in column):
+            col_names['trunk'] = column
     df.rename(columns={col_names['bot']: 'bot', col_names['top']: 'top',
                        col_names['well']: 'well', col_names['soil']: 'soil',
                        col_names['date']: 'date', col_names['type']: 'type',
                        col_names['type_perf']: 'type_perf',
                        col_names['layer']: 'layer',
-                       col_names['well_id']: 'well_id', col_names['field']: 'field'},
+                       col_names['well_id']: 'well_id', col_names['field']: 'field', col_names['trunk']: 'trunk'},
               inplace=True)
     col_names_set = set(df.columns)
     df.drop(columns=list(col_names_set.difference(col_names.keys())),
@@ -69,6 +72,13 @@ def read_df(df_path):
         return None
 
 
+def fes_wells_renaming(well, trunk):
+    if trunk == 0:
+        return well
+    else:
+        return well + f'/{int(trunk)}'
+
+
 class DataReader:
     def __init__(self):
         self.sl_wells = set()
@@ -78,6 +88,8 @@ class DataReader:
         self.rigsw_wells_okay = []
         self.perf_df = None
         self.frs_df = None
+        self.fes_id = False
+        self.perf_id = False
         self.unique_perf_wells = []
         self.key_words = {'-1': ['спец', 'наруш', 'циркуляц'],
                           '2': ['ый мост', 'пакером', 'гпш', 'рппк', 'шлипс', 'прк(г)'],
@@ -95,6 +107,8 @@ class DataReader:
             perf_df['well'] = perf_df['well'].apply(self.well_renaming)
             if 'well_id' not in perf_df.columns:
                 perf_df['well_id'] = ''
+            else:
+                self.perf_id = True
             if 'field' not in perf_df.columns:
                 perf_df['field'] = ''
             self.perf_wells.extend(list(perf_df['well'].unique()))
@@ -119,24 +133,55 @@ class DataReader:
             all_perf_df = all_perf_df.append(perf_df, ignore_index=True)
             count += 1
         all_perf_df = all_perf_df.drop_duplicates()
-        all_perf_df.set_index('well', inplace=True)
+        all_perf_df.sort_values(by=['well_id'], inplace=True)
+        all_perf_df.reset_index(drop=True, inplace=True)
+        # all_perf_df.set_index('well', inplace=True)
+        # # перестановка столбцов для сохранения установленного порядка
+        # all_perf_df = all_perf_df.reindex(['type', 'date', 'top', 'bot', 'layer', 'well_id', 'field'], axis=1)
+        # # преобразование датафрейма в словарь
+        # perf_ints = all_perf_df.groupby(level=0, sort=False) \
+        #     .apply(lambda x: [{'type': e[0],
+        #                        'date': e[1],
+        #                        'top': e[2],
+        #                        'bot': e[3],
+        #                        'layer': e[4],
+        #                        'well_id': e[5],
+        #                        'field': e[6]}
+        #                       for e in x.values]) \
+        #     .to_dict()
+
+        return all_perf_df
+
+    def df_to_dict(self, perf_df):
+        index = 'well_id' if self.fes_id and self.perf_id else 'well'
+        perf_df.set_index(index, inplace=True)
+        field = 'well' if self.fes_id and self.perf_id else 'well_id'
+        # perf_df[index + '_col'] = perf_df.index
         # перестановка столбцов для сохранения установленного порядка
-        all_perf_df = all_perf_df.reindex(['type', 'date', 'top', 'bot', 'layer', 'well_id', 'field'], axis=1)
+        # if index == 'well':
+        perf_df = perf_df.reindex(['type', 'date', 'top', 'bot', 'layer', 'field', field], axis=1)
+        # else:
+        #     perf_df = perf_df.reindex(['type', 'date', 'top', 'bot', 'layer', 'well_id_col', 'field', 'well'], axis=1)
         # преобразование датафрейма в словарь
-        perf_ints = all_perf_df.groupby(level=0, sort=False) \
+        perf_ints = perf_df.groupby(level=0, sort=False) \
             .apply(lambda x: [{'type': e[0],
                                'date': e[1],
                                'top': e[2],
                                'bot': e[3],
                                'layer': e[4],
-                               'well_id': e[5],
-                               'field': e[6]}
+                               'field': e[5],
+                               'well': e[6]}
                               for e in x.values]) \
             .to_dict()
-
         return perf_ints
 
     def fes_reader(self, fes_paths):
+        def ch_trunk(trunk, well_):
+            if well_ in non_bs_wells:
+                return 0
+            else:
+                return trunk
+
         all_fes_df = pd.DataFrame(columns=['well', 'top', 'bot', 'soil', 'layer', 'well_id'])
         count = 1
         for fes_path in fes_paths:
@@ -150,7 +195,18 @@ class DataReader:
                 fes_df['layer'] = ''
             if 'well_id' not in fes_df.columns:
                 fes_df['well_id'] = ''
+            else:
+                self.fes_id = True
+            if 'trunk' not in fes_df.columns:
+                fes_df['trunk'] = 0
             fes_df['well'] = fes_df['well'].apply(self.well_renaming)
+            non_bs_wells = []
+            fes_df['trunk'].fillna(0, inplace=True)
+            for well in tqdm(fes_df['well'].unique()):
+                if len(fes_df[fes_df['well'] == well]['trunk'].unique()) <= 1:
+                    non_bs_wells.append(well)
+            fes_df['trunk'] = fes_df.apply(lambda x: ch_trunk(x['trunk'], x['well']), axis=1)
+            fes_df['well'] = fes_df.apply(lambda x: fes_wells_renaming(x['well'], x['trunk']), axis=1)
             self.rigsw_wells.extend(list(fes_df['well'].unique()))
             self.rigsw_wells_none.extend(list(fes_df[fes_df['soil'].isna()]['well'].unique()))
             fes_df.dropna(inplace=True)
@@ -158,16 +214,19 @@ class DataReader:
             count += 1
         self.rigsw_wells_okay = all_fes_df['well'].unique()
         all_fes_df = all_fes_df.drop_duplicates()
-        all_fes_df.set_index('well', inplace=True)
+        all_fes_df.sort_values(by='well_id', inplace=True)
+        index = 'well_id' if self.fes_id and self.perf_id else 'well'
+        field = 'well' if self.fes_id and self.perf_id else 'well_id'
+        all_fes_df.set_index(index, inplace=True)
         # перестановка столбцов для сохранения установленного порядка
-        all_fes_df = all_fes_df.reindex(['top', 'bot', 'soil', 'layer', 'well_id'], axis=1)
+        all_fes_df = all_fes_df.reindex(['top', 'bot', 'soil', 'layer', field], axis=1)
         # преобразование датафрейма в словарь
         fes_dict = all_fes_df.groupby(level=0, sort=False) \
             .apply(lambda x: [{'top': e[0],
                                'bot': e[1],
                                'soil': e[2],
                                'layer': e[3],
-                               'well_id': e[4]}
+                               field: e[4]}
                               for e in x.values]) \
             .to_dict()
         print('done processing data')
@@ -191,13 +250,17 @@ class DataReader:
         return perf, rigsw, diff_well_df
 
     def well_renaming(self, w_name):
-        if type(w_name) is not str:
+        try:
+            w_name = str(w_name)
+        except:
             return w_name
-        if '/' in w_name:
-            self.sl_wells.add(w_name)
-            return w_name.split('/')[0].lower().strip()
-        else:
-            return w_name.lower().strip()
+        # if type(w_name) is not str:
+        #     return w_name
+        # if '/' in w_name:
+        #     self.sl_wells.add(w_name)
+        #     return w_name.split('/')[0].lower().strip()
+        # else:
+        return w_name.lower().strip()
 
     def get_type(self, type_str, type_perf, layer=''):
         """

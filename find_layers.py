@@ -55,7 +55,7 @@ if __name__ == '__main__':
 
     dr = DataReader()
     try:
-        perf_ints = dr.perf_reader(perf_paths)
+        perf_df = dr.perf_reader(perf_paths)
     except BaseException as e:
         logging.error("Ошибка при чтении файла с перфорациями. " + str(e))
         sys.exit()
@@ -65,6 +65,7 @@ if __name__ == '__main__':
         logging.warning(f"{well['comment']} {well['well']} {well.get('well_id')} {well.get('field')}")
     try:
         fes_dict = dr.fes_reader(fes_paths)
+        perf_ints = dr.df_to_dict(perf_df)
     except BaseException as e:
         logging.error("Ошибка при чтении файла с РИГИС. " + str(e))
         sys.exit()
