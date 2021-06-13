@@ -226,7 +226,7 @@ class DataReader:
                                'bot': e[1],
                                'soil': e[2],
                                'layer': e[3],
-                               field: e[4]}
+                               'well': e[4]}
                               for e in x.values]) \
             .to_dict()
         print('done processing data')
