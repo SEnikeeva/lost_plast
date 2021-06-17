@@ -1,3 +1,5 @@
+import datetime
+
 import pandas as pd
 import json
 from dateutil import parser
@@ -27,8 +29,6 @@ def rename_columns(df):
             col_names['bot'] = column
         elif ('nnas' in column) or ('н_нас' in column):
             col_names['soil'] = column
-        elif ('дата_перф' in column) or (column == 'dat'):
-            col_names['date'] = column
         elif ('цель' in column) or ('_cel' in column):
             col_names['type'] = column
         elif ('tip_perf' in column) or ('тип' in column):
@@ -73,7 +73,7 @@ def read_df(df_path):
 
 
 def fes_wells_renaming(well, trunk):
-    if trunk == 0:
+    if (trunk == 0) or ('/' in well):
         return well
     else:
         return well + f'/{int(trunk)}'
@@ -98,7 +98,7 @@ class DataReader:
 
     def perf_reader(self, perf_paths):
         count = 1
-        all_perf_df = pd.DataFrame(columns=['type', 'date', 'top', 'bot', 'layer'])
+        all_perf_df = pd.DataFrame(columns=['type', 'top', 'bot', 'layer'])
         for perf_path in perf_paths:
             print('started reading perf{} xl'.format(count))
             perf_df = read_df(perf_path)
@@ -106,6 +106,7 @@ class DataReader:
             perf_df.rename(columns=lambda x: x if type(x) is not str else x.lower().strip(), inplace=True)
             rename_columns(perf_df)
             perf_df['well'] = perf_df['well'].apply(self.well_renaming)
+            perf_df['well'] = perf_df['well'].apply(lambda x: x if ('/' in x) or (type(x) != str) else x + '/1')
             if 'well_id' not in perf_df.columns:
                 perf_df['well_id'] = ''
             else:
@@ -115,12 +116,7 @@ class DataReader:
             self.perf_wells.extend(list(perf_df['well'].unique()))
             self.get_unique_wells(perf_df)
 
-            try:
-                perf_df['date'] = perf_df['date'].dt.date
-            except:
-                perf_df['date'] = perf_df['date'].apply(
-                    lambda str_date: parser.parse(str_date).date())
-            perf_df.sort_values(by=['well', 'date'], ascending=True, inplace=True, kind='mergesort')
+            perf_df.sort_values(by='well', ascending=True, inplace=True, kind='mergesort')
             perf_df.reset_index(drop=True, inplace=True)
             perf_df = perf_df[::-1]
             if 'layer' not in perf_df.columns:
@@ -135,6 +131,7 @@ class DataReader:
         all_perf_df = all_perf_df.drop_duplicates()
         all_perf_df.sort_values(by=['well_id'], inplace=True)
         all_perf_df.reset_index(drop=True, inplace=True)
+        all_perf_df['well_id'] = all_perf_df['well_id'].astype(str)
         self.perf_df = all_perf_df.copy()
         # all_perf_df.set_index('well', inplace=True)
         # # перестановка столбцов для сохранения установленного порядка
@@ -160,18 +157,17 @@ class DataReader:
         # perf_df[index + '_col'] = perf_df.index
         # перестановка столбцов для сохранения установленного порядка
         # if index == 'well':
-        perf_df = perf_df.reindex(['type', 'date', 'top', 'bot', 'layer', 'field', field], axis=1)
+        perf_df = perf_df.reindex(['type', 'top', 'bot', 'layer', 'field', field], axis=1)
         # else:
         #     perf_df = perf_df.reindex(['type', 'date', 'top', 'bot', 'layer', 'well_id_col', 'field', 'well'], axis=1)
         # преобразование датафрейма в словарь
         perf_ints = perf_df.groupby(level=0, sort=False) \
             .apply(lambda x: [{'type': e[0],
-                               'date': e[1],
-                               'top': e[2],
-                               'bot': e[3],
-                               'layer': e[4],
-                               'field': e[5],
-                               'well': e[6]}
+                               'top': e[1],
+                               'bot': e[2],
+                               'layer': e[3],
+                               'field': e[4],
+                               'well': e[5]}
                               for e in x.values]) \
             .to_dict()
         return perf_ints
@@ -205,7 +201,7 @@ class DataReader:
             for well in tqdm(fes_df['well'].unique()):
                 if len(fes_df[fes_df['well'] == well]['trunk'].unique()) <= 1:
                     non_bs_wells.append(well)
-            fes_df['trunk'] = fes_df.apply(lambda x: ch_trunk(x['trunk'], x['well']), axis=1)
+            # fes_df['trunk'] = fes_df.apply(lambda x: ch_trunk(x['trunk'], x['well']), axis=1)
             fes_df['well'] = fes_df.apply(lambda x: fes_wells_renaming(x['well'], x['trunk']), axis=1)
             self.rigsw_wells.extend(list(fes_df['well'].unique()))
             self.rigsw_wells_id.extend(list(fes_df['well_id'].unique()))
@@ -217,6 +213,7 @@ class DataReader:
         all_fes_df = all_fes_df.drop_duplicates()
         all_fes_df.sort_values(by='well_id', inplace=True)
         all_fes_df.reset_index(drop=True, inplace=True)
+        all_fes_df['well_id'] = all_fes_df['well_id'].astype(str)
         index = 'well_id' if self.fes_id and self.perf_id else 'well'
         field = 'well' if self.fes_id and self.perf_id else 'well_id'
         self.fes_df = all_fes_df.copy()
