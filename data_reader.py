@@ -248,9 +248,10 @@ class DataReader:
             rigsw_id = list(set(df2).difference(set(df1)))
             for p_id in perf_id:
                 perf.append(self.perf_df[self.perf_df['well_id']==p_id]['well'].unique()[0])
-                perf = list(set(perf).difference(set(rigsw_none)))
+            perf = list(set(perf).difference(set(rigsw_none)))
             for r_id in rigsw_id:
                 rigsw.append(self.fes_df[self.fes_df['well_id'] == r_id]['well'].unique()[0])
+            rigsw = list(set(rigsw))
         else:
             perf = list(set(self.perf_wells).difference(set(self.rigsw_wells)))
             rigsw = list(set(self.rigsw_wells).difference(set(self.perf_wells)))
