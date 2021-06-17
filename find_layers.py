@@ -70,7 +70,8 @@ if __name__ == '__main__':
         logging.error("Ошибка при чтении файла с РИГИС. " + str(e))
         sys.exit()
 
-    perf_rig_diff, rig_perf_diff, diff_well_df = dr.well_diff()
+    perf_rig_diff, rig_perf_diff, diff_well_df, type_diff = dr.well_diff()
+    logging.warning(f"Скважины сопоставлялись по следующему полю: {type_diff}")
     # none_soil_wells = dr.rigsw_wells_none
     # if len(perf_rig_diff) > 0:
     #     logging.warning("У данных скважин отсутствует информация по нефтенасыщенности "

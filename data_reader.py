@@ -86,8 +86,9 @@ class DataReader:
         self.rigsw_wells = []
         self.rigsw_wells_none = []
         self.rigsw_wells_okay = []
+        self.rigsw_wells_id = []
         self.perf_df = None
-        self.frs_df = None
+        self.fes_df = None
         self.fes_id = False
         self.perf_id = False
         self.unique_perf_wells = []
@@ -128,13 +129,13 @@ class DataReader:
             perf_df['type'] = perf_df.apply(
                 lambda x: self.get_type(x['type'], x['type_perf'], x['layer']), axis=1)
             perf_df.drop(perf_df[perf_df['type'] == -1].index, inplace=True)
-            self.perf_df = perf_df
             # переименовка скважин (удаление слэша)
             all_perf_df = all_perf_df.append(perf_df, ignore_index=True)
             count += 1
         all_perf_df = all_perf_df.drop_duplicates()
         all_perf_df.sort_values(by=['well_id'], inplace=True)
         all_perf_df.reset_index(drop=True, inplace=True)
+        self.perf_df = all_perf_df.copy()
         # all_perf_df.set_index('well', inplace=True)
         # # перестановка столбцов для сохранения установленного порядка
         # all_perf_df = all_perf_df.reindex(['type', 'date', 'top', 'bot', 'layer', 'well_id', 'field'], axis=1)
@@ -190,7 +191,6 @@ class DataReader:
             print('done reading fes xl')
             fes_df.rename(columns=lambda x: x if type(x) is not str else x.lower().strip(), inplace=True)
             rename_columns(fes_df)
-            self.frs_df = fes_df
             if 'layer' not in fes_df.columns:
                 fes_df['layer'] = ''
             if 'well_id' not in fes_df.columns:
@@ -208,6 +208,7 @@ class DataReader:
             fes_df['trunk'] = fes_df.apply(lambda x: ch_trunk(x['trunk'], x['well']), axis=1)
             fes_df['well'] = fes_df.apply(lambda x: fes_wells_renaming(x['well'], x['trunk']), axis=1)
             self.rigsw_wells.extend(list(fes_df['well'].unique()))
+            self.rigsw_wells_id.extend(list(fes_df['well_id'].unique()))
             self.rigsw_wells_none.extend(list(fes_df[fes_df['soil'].isna()]['well'].unique()))
             fes_df.dropna(inplace=True)
             all_fes_df = all_fes_df.append(fes_df, ignore_index=True)
@@ -215,8 +216,10 @@ class DataReader:
         self.rigsw_wells_okay = all_fes_df['well'].unique()
         all_fes_df = all_fes_df.drop_duplicates()
         all_fes_df.sort_values(by='well_id', inplace=True)
+        all_fes_df.reset_index(drop=True, inplace=True)
         index = 'well_id' if self.fes_id and self.perf_id else 'well'
         field = 'well' if self.fes_id and self.perf_id else 'well_id'
+        self.fes_df = all_fes_df.copy()
         all_fes_df.set_index(index, inplace=True)
         # перестановка столбцов для сохранения установленного порядка
         all_fes_df = all_fes_df.reindex(['top', 'bot', 'soil', 'layer', field], axis=1)
@@ -233,9 +236,24 @@ class DataReader:
         return fes_dict
 
     def well_diff(self):
-        perf = list(set(self.perf_wells).difference(set(self.rigsw_wells)))
-        rigsw = list(set(self.rigsw_wells).difference(set(self.perf_wells)))
         rigsw_none = list(set(self.rigsw_wells_none).difference(set(self.rigsw_wells_okay)))
+        type_diff = 'название скважины'
+        perf = []
+        rigsw = []
+        if (self.fes_df.loc[0, 'well_id'] != '') and (self.perf_df.loc[0, 'well_id'] != ''):
+            type_diff = 'id'
+            df1 = self.perf_df['well_id']
+            df2 = self.fes_df['well_id']
+            perf_id = list(set(df1).difference(set(df2)))
+            rigsw_id = list(set(df2).difference(set(df1)))
+            for p_id in perf_id:
+                perf.append(self.perf_df[self.perf_df['well_id']==p_id]['well'].unique()[0])
+                perf = list(set(perf).difference(set(rigsw_none)))
+            for r_id in rigsw_id:
+                rigsw.append(self.fes_df[self.fes_df['well_id'] == r_id]['well'].unique()[0])
+        else:
+            perf = list(set(self.perf_wells).difference(set(self.rigsw_wells)))
+            rigsw = list(set(self.rigsw_wells).difference(set(self.perf_wells)))
         max_len = max(len(perf), len(rigsw), len(rigsw_none))
         for i in range(max_len - len(perf)):
             perf.append(None)
@@ -247,7 +265,7 @@ class DataReader:
         diff_well_df['отсут. н-нас.'] = rigsw_none
         diff_well_df['нет в перф'] = rigsw
         diff_well_df['нет в ригис'] = perf
-        return perf, rigsw, diff_well_df
+        return perf, rigsw, diff_well_df, type_diff
 
     def well_renaming(self, w_name):
         try:
