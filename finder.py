@@ -11,7 +11,7 @@ def is_perf(top, bot, ints):
     return False
 
 
-def find_layers(perf_ints, fes_dict, soil_cut):
+def find_layers(perf_ints, fes_dict, soil_cut, is_id):
     lost_layers = []
     for well in tqdm(fes_dict.keys()):
         ints = perf_ints.get(well)
@@ -23,7 +23,13 @@ def find_layers(perf_ints, fes_dict, soil_cut):
             if soil < soil_cut:
                 continue
             if not is_perf(top, bot, ints):
-                lost_layers.append({'well': well.split('/1')[0], 'top': top,
-                                    'bot': bot, 'soil': soil, 'layer': layer, 'well_id': row['well']})
-    return lost_layers
+                if is_id:
+                    lost_layers.append({'ID по РИГИС': well, 'Кровля': top,
+                                        'Подошва': bot, 'Нефтенасыщенность': soil, 'Пласт': layer,
+                                        'Номер скважины по РИГИС': row['well'].split('/1')[0]})
+                else:
+                    lost_layers.append({'Номер скважины по РИГИС': well.split('/1')[0], 'Кровля': top,
+                                        'Подошва': bot, 'Нефтенасыщенность': soil, 'Пласт': layer,
+                                        'ID по РИГИС': row['well']})
 
+    return lost_layers

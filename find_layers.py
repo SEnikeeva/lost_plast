@@ -64,7 +64,7 @@ if __name__ == '__main__':
     for well in dupl_wells:
         logging.warning(f"{well['comment']} {well['well']} {well.get('well_id')} {well.get('field')}")
     try:
-        fes_dict = dr.fes_reader(fes_paths)
+        fes_dict, is_id = dr.fes_reader(fes_paths)
         perf_ints = dr.df_to_dict(perf_df)
     except BaseException as e:
         logging.error("Ошибка при чтении файла с РИГИС. " + str(e))
@@ -85,7 +85,7 @@ if __name__ == '__main__':
     diff_well_df.to_excel(replace_slash(out_folder + '\\' + 'wells_diff.xlsx'), index=False)
 
     try:
-        lost_layers = find_layers(perf_ints, fes_dict, SOIL_CUT)
+        lost_layers = find_layers(perf_ints, fes_dict, SOIL_CUT, is_id)
     except BaseException as e:
         logging.error("Ошибка при поиске пропущенных пластов " + str(e))
         sys.exit()

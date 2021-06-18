@@ -106,7 +106,8 @@ class DataReader:
             perf_df.rename(columns=lambda x: x if type(x) is not str else x.lower().strip(), inplace=True)
             rename_columns(perf_df)
             perf_df['well'] = perf_df['well'].apply(self.well_renaming)
-            perf_df['well'] = perf_df['well'].apply(lambda x: x if ('/' in x) or (type(x) != str) else x + '/1')
+            if 'trunk' in perf_df.columns:
+                perf_df['well'] = perf_df['well'].apply(lambda x: x if ('/' in x) or (type(x) != str) else x + '/1')
             if 'well_id' not in perf_df.columns:
                 perf_df['well_id'] = ''
             else:
@@ -230,7 +231,7 @@ class DataReader:
                               for e in x.values]) \
             .to_dict()
         print('done processing data')
-        return fes_dict
+        return fes_dict, self.fes_id and self.perf_id
 
     def well_diff(self):
         rigsw_none = list(set(self.rigsw_wells_none).difference(set(self.rigsw_wells_okay)))
