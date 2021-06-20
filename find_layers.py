@@ -60,28 +60,18 @@ if __name__ == '__main__':
         logging.error("Ошибка при чтении файла с перфорациями. " + str(e))
         sys.exit()
 
-    dupl_wells = dr.unique_perf_wells
-    for well in dupl_wells:
-        logging.warning(f"{well['comment']} {well['well']} {well.get('well_id')} {well.get('field')}")
     try:
         fes_dict, is_id = dr.fes_reader(fes_paths)
         perf_ints = dr.df_to_dict(perf_df)
     except BaseException as e:
         logging.error("Ошибка при чтении файла с РИГИС. " + str(e))
         sys.exit()
+    dupl_wells = dr.unique_perf_wells
+    for well in dupl_wells:
+        logging.warning(f"{well['comment']} {well['well']} {well.get('well_id')} {well.get('field')}")
 
-    perf_rig_diff, rig_perf_diff, diff_well_df, type_diff = dr.well_diff()
+    diff_well_df, type_diff = dr.well_diff()
     logging.warning(f"Скважины сопоставлялись по следующему полю: {type_diff}")
-    # none_soil_wells = dr.rigsw_wells_none
-    # if len(perf_rig_diff) > 0:
-    #     logging.warning("У данных скважин отсутствует информация по нефтенасыщенности "
-    #                     + str(none_soil_wells))
-    # if len(perf_rig_diff) > 0:
-    #     logging.warning("Данные скважины из файла с перфорациями отсутствуют в РИГИС "
-    #                     + str(perf_rig_diff))
-    # if len(rig_perf_diff) > 0:
-    #     logging.warning("Данные скважины из файла с РИГИС отсутствуют в перфорациях "
-    #                     + str(rig_perf_diff))
     diff_well_df.to_excel(replace_slash(out_folder + '\\' + 'wells_diff.xlsx'), index=False)
 
     try:
