@@ -209,25 +209,34 @@ class DataReader:
         type_diff = 'название скважины'
         perf = []
         rigsw = []
+        rigsw_none = []
+        self.rigsw_wells_none['well'] = self.rigsw_wells_none['well'].astype(str)
+        self.rigsw_wells_none['well_id'] = self.rigsw_wells_none['well_id'].astype(str)
+        self.rigsw_wells_okay['well'] = self.rigsw_wells_okay['well'].astype(str)
+        self.rigsw_wells_okay['well_id'] = self.rigsw_wells_okay['well_id'].astype(str)
         if self.fes_id and self.perf_id:
-            rigsw_none = list(set(self.rigsw_wells_none['well_id'].tolist())\
+
+            rigsw_none_id = list(set(self.rigsw_wells_none['well_id'].tolist())\
                 .difference(set(self.rigsw_wells_okay['well_id'].tolist())))
             type_diff = 'id'
             df1 = self.perf_df['well_id']
             df2 = self.fes_df['well_id']
-            perf_id = list(set(df1).difference(set(df2).union(rigsw_none)))
+            perf_id = list(set(df1).difference(set(df2).union(rigsw_none_id)))
             rigsw_id = list(set(df2).difference(set(df1)))
             for p_id in perf_id:
                 perf.append(self.perf_df[self.perf_df['well_id'] == p_id]['well'].unique()[0])
             for r_id in rigsw_id:
                 rigsw.append(self.fes_df[self.fes_df['well_id'] == r_id]['well'].unique()[0])
+            for n_id in rigsw_none_id:
+                rigsw_none.append(self.rigsw_wells_none[self.rigsw_wells_none['well_id'] == n_id]['well'].unique()[0])
             rigsw = list(set(rigsw))
         else:
-            rigsw_none = list(set(self.rigsw_wells_none['well'].tolist())
+            rigsw_none_id = list(set(self.rigsw_wells_none['well'].tolist())
                               .difference(set(self.rigsw_wells_okay['well'].tolist())))
             perf = list(set(self.perf_wells).difference(set(self.rigsw_wells)))
-            perf = list(set(perf).difference(set(rigsw_none)))
+            perf = list(set(perf).difference(set(rigsw_none_id)))
             rigsw = list(set(self.rigsw_wells).difference(set(self.perf_wells)))
+            rigsw_none = list(set(rigsw_none_id))
         max_len = max(len(perf), len(rigsw), len(rigsw_none))
         for i in range(max_len - len(perf)):
             perf.append(None)
