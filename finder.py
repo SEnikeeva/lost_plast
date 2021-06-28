@@ -26,7 +26,7 @@ def find_layers(perf_ints, fes_dict, soil_cut, is_id):
                 if is_id:
                     lost_layers.append({'ID по РИГИС': well, 'Кровля': top,
                                         'Подошва': bot, 'Нефтенасыщенность': soil, 'Пласт': layer,
-                                        'Номер скважины по РИГИС': row['well'].split('/1')[0]})
+                                        'Номер скважины по РИГИС': row['well']})
                 else:
                     lost_layers.append({'Номер скважины по РИГИС': well.split('/1')[0], 'Кровля': top,
                                         'Подошва': bot, 'Нефтенасыщенность': soil, 'Пласт': layer,
