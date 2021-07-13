@@ -177,19 +177,32 @@ class DataReader:
             self.rigsw_wells = self.rigsw_wells.append(fes_df[['well', 'well_id']].drop_duplicates())
             self.rigsw_wells_none = self.rigsw_wells_none.append(fes_df[fes_df['soil'].isna()][['well', 'well_id']]
                                                                  .drop_duplicates())
-            fes_df.dropna(subset=['soil', 'top', 'bot'], inplace=True)
+            # fes_df.dropna(subset=['soil', 'top', 'bot'], inplace=True)
             all_fes_df = all_fes_df.append(fes_df, ignore_index=True)
             count += 1
-        self.rigsw_wells_okay = all_fes_df[['well', 'well_id']]
         all_fes_df = all_fes_df.drop_duplicates()
         all_fes_df.sort_values(by='well_id', inplace=True)
         all_fes_df.reset_index(drop=True, inplace=True)
-        self.get_unique_wells(all_fes_df, 'РИГИС')
         all_fes_df['well_id'] = all_fes_df['well_id'].astype(int)
         all_fes_df['well_id'] = all_fes_df['well_id'].astype(str)
         index = 'well_id' if self.fes_id and self.perf_id else 'well'
         field = 'well' if self.fes_id and self.perf_id else 'well_id'
         self.fes_df = all_fes_df.copy()
+        fs = all_fes_df[['well', 'well_id']]
+        fs.drop_duplicates(inplace=True)
+        fs.sort_values(by='well', inplace=True)
+        fs['well'] = fs['well'].apply(lambda x: x.split('/')[0])
+        for w in fs['well'].unique():
+            wd = fs[fs['well'] == w]
+            if len(wd) == 3:
+                try:
+                    all_fes_df.loc[all_fes_df['well'].isin([w, w+'/1', w+'/2']), 'well_id'] = all_fes_df[all_fes_df['well']==w]['well_id'].unique()[0]
+                except:
+                    continue
+        all_fes_df.dropna(subset=['soil', 'top', 'bot'], inplace=True)
+        all_fes_df.reset_index(drop=True, inplace=True)
+        self.rigsw_wells_okay = all_fes_df[['well', 'well_id']]
+        self.get_unique_wells(all_fes_df, 'РИГИС')
         all_fes_df.set_index(index, inplace=True)
         # перестановка столбцов для сохранения установленного порядка
         all_fes_df = all_fes_df.reindex(['top', 'bot', 'soil', 'layer', field], axis=1)
