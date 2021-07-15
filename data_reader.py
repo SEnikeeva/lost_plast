@@ -1,7 +1,11 @@
 import json
+from tqdm import tqdm
 
 import numpy as np
 import pandas as pd
+import warnings
+
+warnings.filterwarnings(action='ignore')
 
 
 def is_contains(w, a):
@@ -14,7 +18,7 @@ def is_contains(w, a):
 def rename_columns(df):
     col_names = {'well': '', 'top': '', 'bot': '',
                  'soil': '', 'date': '', 'type': '', 'type_perf': '',
-                 'layer': '', 'well_id': '', 'field': '', 'trunk': ''}
+                 'layer': '', 'well_id': '', 'field': '', 'trunk': '', 'ngdu': '', 'area': ''}
     for column in df.columns.values:
         if type(column) is not str:
             continue
@@ -36,14 +40,23 @@ def rename_columns(df):
             col_names['well_id'] = column
         elif ('obr_nam' in column):
             col_names['field'] = column
-        elif ('ствол' in column):
+        elif ('ствол' in column) or ('stv' == column):
             col_names['trunk'] = column
+        elif ('ngdu' in column):
+            col_names['ngdu'] = column
+        elif ('cex' in column):
+            col_names['area'] = column
     df.rename(columns={col_names['bot']: 'bot', col_names['top']: 'top',
                        col_names['well']: 'well', col_names['soil']: 'soil',
                        col_names['date']: 'date', col_names['type']: 'type',
                        col_names['type_perf']: 'type_perf',
                        col_names['layer']: 'layer',
-                       col_names['well_id']: 'well_id', col_names['field']: 'field', col_names['trunk']: 'trunk'},
+                       col_names['well_id']: 'well_id',
+                       col_names['field']: 'field',
+                       col_names['trunk']: 'trunk',
+                       col_names['ngdu']: 'ngdu',
+                       col_names['trunk']: 'trunk',
+                       col_names['area']: 'area'},
               inplace=True)
     col_names_set = set(df.columns)
     df.drop(columns=list(col_names_set.difference(col_names.keys())),
@@ -86,8 +99,12 @@ def well_renaming(w_name):
 
 class DataReader:
     def __init__(self):
+        self.fes_dict = {}
+        self.del_ids = set()
         self.sl_wells = set()
         self.perf_wells = []
+        self.perf_ints = {}
+        self.perf_ints_cl = {}
         self.rigsw_wells = []
         self.rigsw_wells_none = pd.DataFrame(columns=['well', 'well_id'])
         self.rigsw_wells_okay = pd.DataFrame(columns=['well', 'well_id'])
@@ -95,10 +112,47 @@ class DataReader:
         self.fes_df = None
         self.fes_id = False
         self.perf_id = False
-        self.unique_perf_wells = []
         self.key_words = {'-1': ['спец', 'наруш', 'циркуляц'],
                           '2': ['ый мост', 'пакером', 'гпш', 'рппк', 'шлипс', 'прк(г)'],
                           'd0': ['d0', 'd_0', 'д0', 'д_0']}
+        self.warn_wells = set()
+
+    def get_perf_id(self, fes_w_name, w_id, ngdu=None, area=None):
+        is_same_well = False
+        if fes_w_name in self.perf_ints.keys():
+            if ngdu is not None:
+                is_same_well = self.perf_ints[fes_w_name][0]['ngdu'] == ngdu
+            if area is not None:
+                is_same_well = self.perf_ints[fes_w_name][0]['area'] == area
+            if is_same_well:
+                if w_id != self.perf_ints[fes_w_name][0]['well']:
+                    self.warn_wells.add(f'Скважина {fes_w_name} (id - {w_id}) из РИГИ'
+                                        f'С сопоставилась с перфорациями по названию, нгду и площади')
+                return self.perf_ints[fes_w_name][0]['well']
+        else:
+            one_trunk = True
+            w_name = fes_w_name.split('/')[0]
+            perf_ints = self.perf_ints_cl
+            if perf_ints.get(w_name) is not None:
+                st_v = perf_ints[w_name][0]['trunk']
+                if st_v == -1:
+                    one_trunk = False
+                else:
+                    for ints in perf_ints[w_name]:
+                        if ints['trunk'] != st_v:
+                            one_trunk = False
+                if one_trunk:
+                    if ngdu is not None:
+                        is_same_well = perf_ints[w_name][0]['ngdu'] == ngdu
+                    if area is not None:
+                        is_same_well = perf_ints[w_name][0]['area'] == area
+                    if is_same_well:
+                        if w_id != perf_ints[w_name][0]['well']:
+                            self.warn_wells.add(f'Скважина {fes_w_name} (id - {w_id}) из РИГИС сопоставилась'
+                                                f' с перфорациями по названию, нгду и площади без учета ствола')
+                        return perf_ints[w_name][0]['well']
+
+        return w_id
 
     def perf_reader(self, perf_paths):
         count = 1
@@ -109,18 +163,24 @@ class DataReader:
             print('done reading perf xl and started processing perf data')
             perf_df.rename(columns=lambda x: x if type(x) is not str else x.lower().strip(), inplace=True)
             rename_columns(perf_df)
-            perf_df['well'] = perf_df['well'].apply(well_renaming)
-            if 'trunk' in perf_df.columns:
-                perf_df['well'] = perf_df['well'].apply(lambda x: x if ('/' in x) or (type(x) != str) else x + '/1')
             if 'well_id' not in perf_df.columns:
-                perf_df['well_id'] = ''
+                perf_df['well_id'] = -1
             else:
                 self.perf_id = True
             if 'field' not in perf_df.columns:
                 perf_df['field'] = ''
-            self.perf_wells.extend(list(perf_df['well'].unique()))
             if 'layer' not in perf_df.columns:
                 perf_df['layer'] = ''
+            perf_df['well_id'] = perf_df['well_id'].astype(int)
+            perf_df['well_id'] = perf_df['well_id'].astype(str)
+            perf_df['well'] = perf_df['well'].apply(well_renaming)
+            if 'trunk' in perf_df.columns:
+                perf_df['well'] = perf_df['well'].apply(lambda x: x if ('/' in x) or (type(x) != str) else x + '/1')
+            else:
+                perf_df['trunk'] = -1
+
+            self.perf_wells.extend(list(perf_df['well'].unique()))
+
             # определение вида перфорации
             perf_df['type'] = perf_df.apply(
                 lambda x: self.get_type(x['type'], x['type_perf'], x['layer']), axis=1)
@@ -131,17 +191,18 @@ class DataReader:
         all_perf_df = all_perf_df.drop_duplicates()
         all_perf_df.sort_values(by=['well_id'], inplace=True)
         all_perf_df.reset_index(drop=True, inplace=True)
-        self.get_unique_wells(all_perf_df, 'Перфорации')
-        all_perf_df['well_id'] = all_perf_df['well_id'].astype(int)
-        all_perf_df['well_id'] = all_perf_df['well_id'].astype(str)
         self.perf_df = all_perf_df.copy()
+        self.perf_ints = self.df_to_dict(all_perf_df, 'well', 'well_id')
+        self.perf_ints_cl = {k.split('/')[0]: v for k, v in self.perf_ints.items()}
+        self.non_unique_wells(self.perf_ints, 'Перфорации')
         return all_perf_df
 
-    def df_to_dict(self, perf_df):
-        index = 'well_id' if self.fes_id and self.perf_id else 'well'
+    def df_to_dict(self, perf_df, index=None, field=None):
+        if index is None:
+            index = 'well_id' if self.fes_id and self.perf_id else 'well'
+            field = 'well' if self.fes_id and self.perf_id else 'well_id'
         perf_df.set_index(index, inplace=True)
-        field = 'well' if self.fes_id and self.perf_id else 'well_id'
-        perf_df = perf_df.reindex(['type', 'top', 'bot', 'layer', 'field', field], axis=1)
+        perf_df = perf_df.reindex(['type', 'top', 'bot', 'layer', 'field', 'ngdu', 'area', 'trunk', field], axis=1)
         # преобразование датафрейма в словарь
         perf_ints = perf_df.groupby(level=0, sort=False) \
             .apply(lambda x: [{'type': e[0],
@@ -149,7 +210,10 @@ class DataReader:
                                'bot': e[2],
                                'layer': e[3],
                                'field': e[4],
-                               'well': e[5]}
+                               'ngdu': e[5],
+                               'area': e[6],
+                               'trunk': e[7],
+                               'well': e[8]}
                               for e in x.values]) \
             .to_dict()
         return perf_ints
@@ -165,8 +229,12 @@ class DataReader:
             rename_columns(fes_df)
             if 'layer' not in fes_df.columns:
                 fes_df['layer'] = ''
+            if 'ngdu' not in fes_df.columns:
+                fes_df['ngdu'] = np.nan
+            if 'area' not in fes_df.columns:
+                fes_df['area'] = np.nan
             if 'well_id' not in fes_df.columns:
-                fes_df['well_id'] = ''
+                fes_df['well_id'] = -1
             else:
                 self.fes_id = True
             if 'trunk' not in fes_df.columns:
@@ -174,47 +242,68 @@ class DataReader:
             fes_df['well'] = fes_df['well'].apply(well_renaming)
             fes_df['trunk'].fillna(0, inplace=True)
             fes_df['well'] = fes_df.apply(lambda x: fes_wells_renaming(x['well'], x['trunk']), axis=1)
-            self.rigsw_wells = self.rigsw_wells.append(fes_df[['well', 'well_id']].drop_duplicates())
+            fes_df['well_id'] = fes_df['well_id'].astype(int)
+            fes_df['well_id'] = fes_df['well_id'].astype(str)
+            fs = fes_df[['well', 'well_id']]
+            fs.drop_duplicates(inplace=True)
+            fs.sort_values(by='well', inplace=True)
+            fs['well'] = fs['well'].apply(lambda x: x.split('/')[0])
+            for w in tqdm(fs['well'].unique()):
+                wd = fs[fs['well'] == w]
+                if len(wd) == 3:
+                    try:
+                        if len(fes_df[fes_df['well'] == w + '/1']['well_id'].unique()) > 0:
+                            self.del_ids.add(fes_df[fes_df['well'] == w + '/1']['well_id'].unique()[0])
+                        if len(fes_df[fes_df['well'] == w + '/2']['well_id'].unique()) > 0:
+                            self.del_ids.add(fes_df[fes_df['well'] == w + '/2']['well_id'].unique()[0])
+                        w_names = [w]
+                        if w + '/1' not in self.perf_wells:
+                            w_names.append(w + '/1')
+                        if w + '/2' not in self.perf_wells:
+                            w_names.append(w + '/2')
+                        fes_df.loc[fes_df['well'].isin(w_names), 'well_id'] = \
+                            fes_df[fes_df['well'] == w]['well_id'].unique()[0]
+
+                    except:
+                        continue
+            f_dict = fes_df.to_dict(orient='records')
+            for i in tqdm(range(len(f_dict))):
+                f_dict[i]['well_id'] = self.get_perf_id(f_dict[i]['well'], f_dict[i]['well_id'],
+                                                        f_dict[i]['ngdu'], f_dict[i]['area'])
+            fes_df = pd.DataFrame(f_dict)
+            self.rigsw_wells.extend(fes_df['well'].unique())
             self.rigsw_wells_none = self.rigsw_wells_none.append(fes_df[fes_df['soil'].isna()][['well', 'well_id']]
                                                                  .drop_duplicates())
-            # fes_df.dropna(subset=['soil', 'top', 'bot'], inplace=True)
             all_fes_df = all_fes_df.append(fes_df, ignore_index=True)
             count += 1
+
         all_fes_df = all_fes_df.drop_duplicates()
         all_fes_df.sort_values(by='well_id', inplace=True)
         all_fes_df.reset_index(drop=True, inplace=True)
-        all_fes_df['well_id'] = all_fes_df['well_id'].astype(int)
-        all_fes_df['well_id'] = all_fes_df['well_id'].astype(str)
         index = 'well_id' if self.fes_id and self.perf_id else 'well'
         field = 'well' if self.fes_id and self.perf_id else 'well_id'
-        self.fes_df = all_fes_df.copy()
-        fs = all_fes_df[['well', 'well_id']]
-        fs.drop_duplicates(inplace=True)
-        fs.sort_values(by='well', inplace=True)
-        fs['well'] = fs['well'].apply(lambda x: x.split('/')[0])
-        for w in fs['well'].unique():
-            wd = fs[fs['well'] == w]
-            if len(wd) == 3:
-                try:
-                    all_fes_df.loc[all_fes_df['well'].isin([w, w+'/1', w+'/2']), 'well_id'] = all_fes_df[all_fes_df['well']==w]['well_id'].unique()[0]
-                except:
-                    continue
+
+        self.fes_none_df = all_fes_df.copy()
         all_fes_df.dropna(subset=['soil', 'top', 'bot'], inplace=True)
         all_fes_df.reset_index(drop=True, inplace=True)
         self.rigsw_wells_okay = all_fes_df[['well', 'well_id']]
-        self.get_unique_wells(all_fes_df, 'РИГИС')
+        self.fes_df = all_fes_df.copy()
+        self.fes_dict = self.df_to_dict(all_fes_df.copy(), 'well', 'well_id')
         all_fes_df.set_index(index, inplace=True)
         # перестановка столбцов для сохранения установленного порядка
-        all_fes_df = all_fes_df.reindex(['top', 'bot', 'soil', 'layer', field], axis=1)
+        all_fes_df = all_fes_df.reindex(['top', 'bot', 'soil', 'layer', 'ngdu', 'area', field], axis=1)
         # преобразование датафрейма в словарь
         fes_dict = all_fes_df.groupby(level=0, sort=False) \
             .apply(lambda x: [{'top': e[0],
                                'bot': e[1],
                                'soil': e[2],
                                'layer': e[3],
-                               'well': e[4]}
+                               'ngdu': e[4],
+                               'area': e[5],
+                               'well': e[6]}
                               for e in x.values]) \
             .to_dict()
+        self.non_unique_wells(self.fes_dict, 'РИГИС')
         print('done processing data')
         return fes_dict, self.fes_id and self.perf_id
 
@@ -229,8 +318,8 @@ class DataReader:
         self.rigsw_wells_okay['well_id'] = self.rigsw_wells_okay['well_id'].astype(str)
         if self.fes_id and self.perf_id:
 
-            rigsw_none_id = list(set(self.rigsw_wells_none['well_id'].tolist())\
-                .difference(set(self.rigsw_wells_okay['well_id'].tolist())))
+            rigsw_none_id = list(set(self.rigsw_wells_none['well_id'].tolist()) \
+                                 .difference(set(self.rigsw_wells_okay['well_id'].tolist())).difference(self.del_ids))
             type_diff = 'id'
             df1 = self.perf_df['well_id']
             df2 = self.fes_df['well_id']
@@ -245,7 +334,7 @@ class DataReader:
             rigsw = list(set(rigsw))
         else:
             rigsw_none_id = list(set(self.rigsw_wells_none['well'].tolist())
-                              .difference(set(self.rigsw_wells_okay['well'].tolist())))
+                                 .difference(set(self.rigsw_wells_okay['well'].tolist())).difference())
             perf = list(set(self.perf_wells).difference(set(self.rigsw_wells)))
             perf = list(set(perf).difference(set(rigsw_none_id)))
             rigsw = list(set(self.rigsw_wells).difference(set(self.perf_wells)))
@@ -256,7 +345,7 @@ class DataReader:
         for i in range(max_len - len(rigsw)):
             rigsw.append(None)
         for i in range(max_len - len(rigsw_none)):
-                rigsw_none.append(None)
+            rigsw_none.append(None)
         diff_well_df = pd.DataFrame(columns=['нет в перф', 'нет в ригис', 'отсут. н-нас.'])
         diff_well_df['отсут. н-нас.'] = rigsw_none
         diff_well_df['нет в перф'] = rigsw
@@ -279,7 +368,7 @@ class DataReader:
         elif ('отключ' in type_str.lower()) or \
                 (('изоляц' in type_str.lower()) and (
                         'раб' in type_str.lower())):
-            if (type(type_perf) is not str) or\
+            if (type(type_perf) is not str) or \
                     ((type_perf.lower().strip() == 'изоляция пакером') and
                      (layer.lower().strip() in self.key_words['d0'])):
                 return 0
@@ -291,31 +380,26 @@ class DataReader:
             return 3
         return 1
 
-    def get_unique_wells(self, perf_df, source):
-        for well in perf_df['well'].unique():
-            well_df = perf_df[perf_df['well'] == well]
-            dupl_by_id = well_df.loc[~well_df.duplicated(subset='well_id')]
-            dupl_by_field = well_df.loc[~well_df.duplicated(subset='field')] if 'field' in perf_df.columns else []
-            if len(dupl_by_id) > 1:
-                dict_ = dupl_by_id.to_dict(orient='records')
-                dict_none = []
-                for e in dict_:
-                    if (type(e['well_id']) is float) and (np.isnan(e['well_id'])) or (e['well_id'] is None):
-                        continue
-                    else:
-                        e['comment'] = f'{source}. Неуникальное название скважины относительно id'
-                        dict_none.append(e)
-                if len(dict_none) > 1:
-                    self.unique_perf_wells.extend(dict_none)
-            if len(dupl_by_field) > 1:
-                dict_ = dupl_by_field.to_dict(orient='records')
-                dict_none = []
-                for e in dict_:
-                    if (type(e['field']) is float) and (np.isnan(e['field'])) or (e['field'] is None):
-                        continue
-                    else:
-                        e['comment'] = f'{source}. Неуникальное название скважины относительно месторождения'
-                        dict_none.append(e)
-                if len(dict_none) > 1:
-                    self.unique_perf_wells.extend(dict_none)
-
+    def non_unique_wells(self, data, source):
+        for k, v in tqdm(data.items()):
+            is_id = False
+            is_field = False
+            field = v[0]['field']
+            w_id = v[0]['well']
+            for e in v:
+                if (type(e['field']) is float) and (np.isnan(e['field'])) or (e['field'] is None):
+                    continue
+                else:
+                    if e['field'] != field:
+                        is_id = True
+                        self.warn_wells.add(f'{source}.'
+                                            f' Неуникальное название скважины относительно месторождения: {k}')
+                if (type(e['well']) is float) and (np.isnan(e['well'])) or (e['well'] is None):
+                    continue
+                else:
+                    if e['well'] != w_id:
+                        is_field = True
+                        self.warn_wells.add(f'{source}.'
+                                            f' Неуникальное название скважины относительно id: {k}')
+                if is_field and is_id:
+                    break

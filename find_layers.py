@@ -62,13 +62,12 @@ if __name__ == '__main__':
 
     # try:
     fes_dict, is_id = dr.fes_reader(fes_paths)
-    perf_ints = dr.df_to_dict(perf_df)
+    perf_ints = dr.perf_ints
     # except BaseException as e:
     #     logging.error("Ошибка при чтении файла с РИГИС. " + str(e))
     #     sys.exit()
-    dupl_wells = dr.unique_perf_wells
-    for well in dupl_wells:
-        logging.warning(f"{well['comment']} {well['well']} {well.get('well_id')} {well.get('field')}")
+    for well in dr.warn_wells:
+        logging.warning(well)
 
     diff_well_df, type_diff = dr.well_diff()
     logging.warning(f"Скважины сопоставлялись по следующему полю: {type_diff}")
