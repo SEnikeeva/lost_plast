@@ -60,12 +60,12 @@ if __name__ == '__main__':
         logging.error("Ошибка при чтении файла с перфорациями. " + str(e))
         sys.exit()
 
-    # try:
-    fes_dict, is_id = dr.fes_reader(fes_paths)
-    perf_ints = dr.perf_ints
-    # except BaseException as e:
-    #     logging.error("Ошибка при чтении файла с РИГИС. " + str(e))
-    #     sys.exit()
+    try:
+        fes_dict, is_id = dr.fes_reader(fes_paths)
+        perf_ints = dr.perf_ints
+    except BaseException as e:
+        logging.error("Ошибка при чтении файла с РИГИС. " + str(e))
+        sys.exit()
     for well in dr.warn_wells:
         logging.warning(well)
 

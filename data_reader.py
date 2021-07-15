@@ -267,7 +267,7 @@ class DataReader:
                     except:
                         continue
             f_dict = fes_df.to_dict(orient='records')
-            for i in tqdm(range(len(f_dict))):
+            for i in range(len(f_dict)):
                 f_dict[i]['well_id'] = self.get_perf_id(f_dict[i]['well'], f_dict[i]['well_id'],
                                                         f_dict[i]['ngdu'], f_dict[i]['area'])
             fes_df = pd.DataFrame(f_dict)
@@ -381,7 +381,7 @@ class DataReader:
         return 1
 
     def non_unique_wells(self, data, source):
-        for k, v in tqdm(data.items()):
+        for k, v in data.items():
             is_id = False
             is_field = False
             field = v[0]['field']
