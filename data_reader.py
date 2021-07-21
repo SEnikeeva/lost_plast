@@ -115,6 +115,7 @@ class DataReader:
         self.key_words = {'-1': ['спец', 'наруш', 'циркуляц'],
                           '2': ['ый мост', 'пакером', 'гпш', 'рппк', 'шлипс', 'прк(г)'],
                           'd0': ['d0', 'd_0', 'д0', 'д_0']}
+        self.bs = set()
         self.warn_wells = set()
 
     def get_perf_id(self, fes_w_name, w_id, ngdu=None, area=None):
@@ -142,6 +143,8 @@ class DataReader:
                         if ints['trunk'] != st_v:
                             one_trunk = False
                 if one_trunk:
+                    if (st_v != 1) and (w_id != perf_ints[w_name][0]['well']):
+                        self.bs.add((w_name, perf_ints[w_name][0]['well'], st_v))
                     if ngdu is not None:
                         is_same_well = perf_ints[w_name][0]['ngdu'] == ngdu
                     if area is not None:
