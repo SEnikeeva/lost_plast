@@ -103,6 +103,7 @@ class DataReader:
         self.del_ids = set()
         self.sl_wells = set()
         self.perf_wells = []
+        self.perf_ids = []
         self.perf_ints = {}
         self.perf_ints_cl = {}
         self.rigsw_wells = []
@@ -115,7 +116,6 @@ class DataReader:
         self.key_words = {'-1': ['спец', 'наруш', 'циркуляц'],
                           '2': ['ый мост', 'пакером', 'гпш', 'рппк', 'шлипс', 'прк(г)'],
                           'd0': ['d0', 'd_0', 'д0', 'д_0']}
-        self.bs = set()
         self.warn_wells = set()
 
     def get_perf_id(self, fes_w_name, w_id, ngdu=None, area=None):
@@ -136,15 +136,13 @@ class DataReader:
             perf_ints = self.perf_ints_cl
             if perf_ints.get(w_name) is not None:
                 st_v = perf_ints[w_name][0]['trunk']
-                if st_v == -1:
+                if st_v != 1:
                     one_trunk = False
                 else:
                     for ints in perf_ints[w_name]:
                         if ints['trunk'] != st_v:
                             one_trunk = False
                 if one_trunk:
-                    if (st_v != 1) and (w_id != perf_ints[w_name][0]['well']):
-                        self.bs.add((w_name, perf_ints[w_name][0]['well'], st_v))
                     if ngdu is not None:
                         is_same_well = perf_ints[w_name][0]['ngdu'] == ngdu
                     if area is not None:
@@ -195,6 +193,7 @@ class DataReader:
         all_perf_df.sort_values(by=['well_id'], inplace=True)
         all_perf_df.reset_index(drop=True, inplace=True)
         self.perf_df = all_perf_df.copy()
+        self.perf_ids = list(all_perf_df['well_id'].unique())
         self.perf_ints = self.df_to_dict(all_perf_df, 'well', 'well_id')
         self.perf_ints_cl = {k.split('/')[0]: v for k, v in self.perf_ints.items()}
         self.non_unique_wells(self.perf_ints, 'Перфорации')
@@ -220,6 +219,12 @@ class DataReader:
                               for e in x.values]) \
             .to_dict()
         return perf_ints
+
+    def find_match(self, f_id):
+        if f_id in self.perf_ids:
+            return 1
+        else:
+            return 0
 
     def fes_reader(self, fes_paths):
         all_fes_df = pd.DataFrame(columns=['well', 'top', 'bot', 'soil', 'layer', 'well_id'])
@@ -247,32 +252,39 @@ class DataReader:
             fes_df['well'] = fes_df.apply(lambda x: fes_wells_renaming(x['well'], x['trunk']), axis=1)
             fes_df['well_id'] = fes_df['well_id'].astype(int)
             fes_df['well_id'] = fes_df['well_id'].astype(str)
-            fs = fes_df[['well', 'well_id']]
+            fes_df['is_match'] = fes_df['well_id'].apply(self.find_match)
+            fs = fes_df[['well', 'well_id', 'is_match']]
             fs.drop_duplicates(inplace=True)
             fs.sort_values(by='well', inplace=True)
             fs['well'] = fs['well'].apply(lambda x: x.split('/')[0])
             for w in tqdm(fs['well'].unique()):
                 wd = fs[fs['well'] == w]
-                if len(wd) == 3:
+                w_names = [w]
+                if (len(wd) == 3) and (len(fes_df[fes_df['well'] == w]) > 0)\
+                        and (fes_df[fes_df['well'] == w]['is_match'].unique()[0] == 1):
                     try:
-                        if len(fes_df[fes_df['well'] == w + '/1']['well_id'].unique()) > 0:
-                            self.del_ids.add(fes_df[fes_df['well'] == w + '/1']['well_id'].unique()[0])
-                        if len(fes_df[fes_df['well'] == w + '/2']['well_id'].unique()) > 0:
-                            self.del_ids.add(fes_df[fes_df['well'] == w + '/2']['well_id'].unique()[0])
-                        w_names = [w]
-                        if w + '/1' not in self.perf_wells:
+                        f1 = fes_df[fes_df['well'] == w + '/1']
+                        f2 = fes_df[fes_df['well'] == w + '/2']
+                        if (len(f1['well_id'].unique()) > 0)\
+                                and (w + '/1' not in self.perf_wells)\
+                                and (f1['is_match'].unique() == 0):
                             w_names.append(w + '/1')
-                        if w + '/2' not in self.perf_wells:
+                            self.del_ids.add(f1['well_id'].unique()[0])
+                        if (len(f2['well_id'].unique()) > 0) \
+                                and (w + '/2' not in self.perf_wells) \
+                                and (f2['is_match'].unique() == 0):
                             w_names.append(w + '/2')
+                            self.del_ids.add(f2['well_id'].unique()[0])
                         fes_df.loc[fes_df['well'].isin(w_names), 'well_id'] = \
                             fes_df[fes_df['well'] == w]['well_id'].unique()[0]
-
+                        fes_df.loc[fes_df['well'].isin(w_names), 'is_match'] = 1
                     except:
                         continue
             f_dict = fes_df.to_dict(orient='records')
             for i in range(len(f_dict)):
-                f_dict[i]['well_id'] = self.get_perf_id(f_dict[i]['well'], f_dict[i]['well_id'],
-                                                        f_dict[i]['ngdu'], f_dict[i]['area'])
+                if f_dict[i]['is_match'] == 0:
+                    f_dict[i]['well_id'] = self.get_perf_id(f_dict[i]['well'], f_dict[i]['well_id'],
+                                                            f_dict[i]['ngdu'], f_dict[i]['area'])
             fes_df = pd.DataFrame(f_dict)
             self.rigsw_wells.extend(fes_df['well'].unique())
             self.rigsw_wells_none = self.rigsw_wells_none.append(fes_df[fes_df['soil'].isna()][['well', 'well_id']]

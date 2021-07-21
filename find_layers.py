@@ -84,9 +84,3 @@ if __name__ == '__main__':
     except BaseException as e:
         logging.error("Ошибка при записи результатов " + str(e))
         sys.exit()
-
-    bs_s = ''
-    for w in dr.bs:
-        bs_s += w[0] + ' ' + w[1] + ' ' + str(w[2]) + '\n'
-    with open('bs.txt', 'w') as f:
-        f.write(bs_s)
