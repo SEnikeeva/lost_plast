@@ -285,7 +285,21 @@ class DataReader:
                 if f_dict[i]['is_match'] == 0:
                     f_dict[i]['well_id'] = self.get_perf_id(f_dict[i]['well'], f_dict[i]['well_id'],
                                                             f_dict[i]['ngdu'], f_dict[i]['area'])
+                    if f_dict[i]['well_id'] in self.perf_ids:
+                        f_dict[i]['is_match'] = 1
             fes_df = pd.DataFrame(f_dict)
+            all_wells = fes_df['well'].unique()
+            fs = fes_df[['well', 'well_id', 'is_match']]
+            fs.drop_duplicates(inplace=True)
+            fs.sort_values(by='well', inplace=True)
+            fs.reset_index(drop=True, inplace=True)
+            for i in tqdm(range(len(fs))):
+                w_name = fs.loc[i, 'well']
+                if w_name + '/1' in all_wells:
+                    f_part = fes_df[fes_df['well'] == w_name + '/1']
+                    if (f_part['is_match'].unique()[0] == 1) and (f_part['well_id'].unique()[0] > fs.loc[i, 'well_id']):
+                        fes_df.loc[fes_df['well'] == w_name, 'well_id'] = f_part['well_id'].unique()[0]
+
             self.rigsw_wells.extend(fes_df['well'].unique())
             self.rigsw_wells_none = self.rigsw_wells_none.append(fes_df[fes_df['soil'].isna()][['well', 'well_id']]
                                                                  .drop_duplicates())
